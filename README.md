@@ -1,4 +1,4 @@
-# Book Keeper
+# Book Planner
 
 A golang-based microservices app for planning novels and books. A test bed for trying:
 - traefik forward auth

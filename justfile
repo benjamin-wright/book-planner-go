@@ -1,5 +1,5 @@
-cluster_name := "book-keeper"
-registry_name := "book-keeper-registry.localhost"
+cluster_name := "book-planner"
+registry_name := "book-planner-registry.localhost"
 registry_port := "5000"
 
 start: create-cluster setup-context wait-for-traefik
@@ -22,6 +22,7 @@ create-cluster:
 setup-context:
     @mkdir -p .scratch
     @k3d kubeconfig get {{ cluster_name }} > .scratch/kubeconfig
+    chmod og-r .scratch/kubeconfig
 
 delete-cluster:
     if k3d cluster list | grep -qw {{ cluster_name }}; then \

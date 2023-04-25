@@ -1,0 +1,14 @@
+name: db
+rbacs:
+- apiGroups: [""]
+  resources: ["deployments"]
+  verbs: ["create", "get", "list", "watch", "delete"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "get", "list", "delete"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get"]
+- apiGroups: ["ponglehub.co.uk"]
+  resources: ["cockroachdbs", "cockroachmigrations", "cockroachclients", "redisdbs"]
+  verbs: ["get", "list", "watch", "update"]

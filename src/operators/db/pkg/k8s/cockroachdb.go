@@ -18,7 +18,7 @@ type CockroachDB struct {
 func (db *CockroachDB) toUnstructured() *unstructured.Unstructured {
 	result := &unstructured.Unstructured{}
 	result.SetUnstructuredContent(map[string]interface{}{
-		"apiVersion": "ponglhub.co.uk/v1alpha1",
+		"apiVersion": "ponglehub.co.uk/v1alpha1",
 		"kind":       "CockroachDB",
 		"metadata": map[string]interface{}{
 			"name": db.Name,

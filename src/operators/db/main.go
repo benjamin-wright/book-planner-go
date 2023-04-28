@@ -14,6 +14,8 @@ func main() {
 	logger, _ := zap.NewDevelopment()
 	zap.ReplaceGlobals(logger)
 
+	namespace := os.Getenv("NAMESPACE")
+
 	zap.S().Info("Starting operator...")
 
 	cli, err := k8s.New()
@@ -22,7 +24,16 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	cli.WatchCockroachDBs(ctx, cancel, func(old k8s.CockroachDB, new k8s.CockroachDB) {})
+	dbs, err := cli.CockroachDBWatch(ctx, cancel, namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to watch cockroachdbs: %+v", err)
+	}
+
+	go func(dbs <-chan map[string]*k8s.CockroachDB) {
+		for db := range dbs {
+			zap.S().Infof("Event: %+v", db)
+		}
+	}(dbs)
 
 	zap.S().Info("Running!")
 

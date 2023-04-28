@@ -23,4 +23,13 @@ func TestSomething(t *testing.T) {
 		t.Logf("failed to create test db: %+v", err)
 		t.FailNow()
 	}
+
+	err = cli.CockroachDBCreate(context.Background(), k8s.CockroachDB{
+		Name:      "other-db",
+		Namespace: os.Getenv("NAMESPACE"),
+	})
+	if err != nil {
+		t.Logf("failed to create other db: %+v", err)
+		t.FailNow()
+	}
 }

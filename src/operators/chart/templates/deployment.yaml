@@ -4,7 +4,6 @@ metadata:
   name: {{ .Values.name }}
 spec:
   replicas: {{ .Values.replicas | default 1 }}
-  serviceAccount: {{ .Values.name }}
   selector:
     matchLabels:
       app: {{ .Values.name }}
@@ -13,6 +12,10 @@ spec:
       labels:
         app: {{ .Values.name }}
     spec:
+      serviceAccount: {{ .Values.name }}
       containers:
       - name: operator
         image: {{ .Values.image }}
+        env:
+        - name: NAMESPACE
+          value: {{ .Release.Namespace }}

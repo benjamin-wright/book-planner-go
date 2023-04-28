@@ -3,11 +3,14 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"go.uber.org/zap"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/dynamicinformer"
+	"k8s.io/client-go/tools/cache"
 )
 
 type CockroachDB struct {
@@ -29,7 +32,14 @@ func (db *CockroachDB) toUnstructured() *unstructured.Unstructured {
 	return result
 }
 
-type CockroachDBWatchHandler func(old CockroachDB, new CockroachDB)
+func (db *CockroachDB) fromUnstructured(obj *unstructured.Unstructured) {
+	db.Name = obj.GetName()
+	db.Namespace = obj.GetNamespace()
+}
+
+func (db *CockroachDB) getName() string {
+	return db.Name
+}
 
 func (c *Client) CockroachDBCreate(ctx context.Context, db CockroachDB) error {
 	_, err := c.client.Resource(CockroachDBSchema).Namespace(db.Namespace).Create(ctx, db.toUnstructured(), v1.CreateOptions{})
@@ -40,40 +50,60 @@ func (c *Client) CockroachDBCreate(ctx context.Context, db CockroachDB) error {
 	return nil
 }
 
-func (c *Client) WatchCockroachDBs(ctx context.Context, cancel context.CancelFunc, handler CockroachDBWatchHandler) error {
-	watcher, err := c.client.Resource(CockroachDBSchema).Watch(ctx, v1.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to watch cockroach dbs: %+v", err)
-	}
+type Resources[T watchable] struct {
+	resources map[string]T
+}
 
-	go func(w <-chan watch.Event) {
-		for e := range w {
-			switch e.Type {
-			case watch.Added:
-				{
-					zap.S().Debug("Watch event: CockroachDB[Added]")
-				}
-			case watch.Modified:
-				{
-					zap.S().Debug("Watch event: CockroachDB[Modified]")
-				}
-			case watch.Bookmark:
-				{
-					zap.S().Debug("Watch event: CockroachDB[Bookmark]")
-				}
-			case watch.Deleted:
-				{
-					zap.S().Debug("Watch event: CockroachDB[Deleted]")
-				}
-			case watch.Error:
-				{
-					zap.S().Debug("Watch event: CockroachDB[Error]")
-				}
-			}
+func (r *Resources[T]) Add(obj interface{}) {
+	var res T
+	res.fromUnstructured(obj.(*unstructured.Unstructured))
+	r.resources[res.getName()] = res
+}
+
+func (r *Resources[T]) Delete(obj interface{}) {
+	var res T
+	res.fromUnstructured(obj.(*unstructured.Unstructured))
+	delete(r.resources, res.getName())
+}
+
+type watchable interface {
+	getName() string
+	toUnstructured() *unstructured.Unstructured
+	fromUnstructured(obj *unstructured.Unstructured)
+}
+
+func watchResource[T watchable](client dynamic.Interface, ctx context.Context, cancel context.CancelFunc, namespace string, schema schema.GroupVersionResource) (<-chan map[string]T, error) {
+	resources := Resources[T]{}
+	output := make(chan map[string]T, 1)
+
+	factory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(client, time.Minute, namespace, nil)
+	informer := factory.ForResource(schema).Informer()
+
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			resources.Add(obj)
+			output <- resources.resources
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			resources.Add(newObj)
+			output <- resources.resources
+		},
+		DeleteFunc: func(obj interface{}) {
+			resources.Delete(obj)
+			output <- resources.resources
+		},
+	})
+
+	go func() {
+		informer.Run(ctx.Done())
+		if ctx.Err() == nil {
+			cancel()
 		}
+	}()
 
-		cancel()
-	}(watcher.ResultChan())
+	return output, nil
+}
 
-	return nil
+func (c *Client) CockroachDBWatch(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]*CockroachDB, error) {
+	return watchResource[*CockroachDB](c.client, ctx, cancel, namespace, CockroachDBSchema)
 }

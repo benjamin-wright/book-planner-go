@@ -1,12 +1,9 @@
 package k8s
 
 import (
-	"context"
-	"fmt"
-
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/k8s/generic_client"
 )
 
 type CockroachDB struct {
@@ -14,7 +11,7 @@ type CockroachDB struct {
 	Namespace string
 }
 
-func (db *CockroachDB) toUnstructured() *unstructured.Unstructured {
+func (db *CockroachDB) ToUnstructured() *unstructured.Unstructured {
 	result := &unstructured.Unstructured{}
 	result.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "ponglehub.co.uk/v1alpha1",
@@ -28,12 +25,12 @@ func (db *CockroachDB) toUnstructured() *unstructured.Unstructured {
 	return result
 }
 
-func (db *CockroachDB) fromUnstructured(obj *unstructured.Unstructured) {
+func (db *CockroachDB) FromUnstructured(obj *unstructured.Unstructured) {
 	db.Name = obj.GetName()
 	db.Namespace = obj.GetNamespace()
 }
 
-func (db *CockroachDB) getName() string {
+func (db *CockroachDB) GetName() string {
 	return db.Name
 }
 
@@ -43,15 +40,6 @@ var CockroachDBSchema = schema.GroupVersionResource{
 	Resource: "cockroachdbs",
 }
 
-func (c *Client) CockroachDBCreate(ctx context.Context, db CockroachDB) error {
-	_, err := c.client.Resource(CockroachDBSchema).Namespace(db.Namespace).Create(ctx, db.toUnstructured(), v1.CreateOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to create cockroachdb: %+v", err)
-	}
-
-	return nil
-}
-
-func (c *Client) CockroachDBWatch(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]CockroachDB, error) {
-	return watchResource[CockroachDB](c.client, ctx, cancel, namespace, CockroachDBSchema)
+func NewCockroachDBClient(namespace string) (*generic_client.Client[CockroachDB, *CockroachDB], error) {
+	return generic_client.New[CockroachDB](CockroachDBSchema, namespace)
 }

@@ -18,18 +18,24 @@ func main() {
 
 	zap.S().Info("Starting operator...")
 
-	cli, err := k8s.New()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	cdbClient, err := k8s.NewCockroachDBClient(namespace)
 	if err != nil {
 		zap.S().Fatalf("Failed to create k8s client: %+v", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	cockroachDBs, err := cli.CockroachDBWatch(ctx, cancel, namespace)
+	cockroachDBs, err := cdbClient.Watch(ctx, cancel)
 	if err != nil {
 		zap.S().Fatalf("Failed to watch cockroach dbs: %+v", err)
 	}
 
-	redisDBs, err := cli.RedisDBWatch(ctx, cancel, namespace)
+	rdbClient, err := k8s.NewRedisDBClient(namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to create k8s client: %+v", err)
+	}
+
+	redisDBs, err := rdbClient.Watch(ctx, cancel)
 	if err != nil {
 		zap.S().Fatalf("Failed to watch redis dbs: %+v", err)
 	}

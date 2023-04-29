@@ -16,24 +16,26 @@ func TestSomethingIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	cli, err := k8s.New()
+	namespace := os.Getenv("NAMESPACE")
+
+	cli, err := k8s.NewCockroachDBClient(namespace)
 	if err != nil {
 		t.Logf("failed to create kube client: %+v", err)
 		t.FailNow()
 	}
 
-	err = cli.CockroachDBCreate(context.Background(), k8s.CockroachDB{
+	err = cli.Create(context.Background(), k8s.CockroachDB{
 		Name:      "test-db",
-		Namespace: os.Getenv("NAMESPACE"),
+		Namespace: namespace,
 	})
 	if err != nil {
 		t.Logf("failed to create test db: %+v", err)
 		t.FailNow()
 	}
 
-	err = cli.CockroachDBCreate(context.Background(), k8s.CockroachDB{
+	err = cli.Create(context.Background(), k8s.CockroachDB{
 		Name:      "other-db",
-		Namespace: os.Getenv("NAMESPACE"),
+		Namespace: namespace,
 	})
 	if err != nil {
 		t.Logf("failed to create other db: %+v", err)

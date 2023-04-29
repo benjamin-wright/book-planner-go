@@ -1,12 +1,9 @@
 package k8s
 
 import (
-	"context"
-	"fmt"
-
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/k8s/generic_client"
 )
 
 type RedisDB struct {
@@ -14,7 +11,7 @@ type RedisDB struct {
 	Namespace string
 }
 
-func (db *RedisDB) toUnstructured() *unstructured.Unstructured {
+func (db *RedisDB) ToUnstructured() *unstructured.Unstructured {
 	result := &unstructured.Unstructured{}
 	result.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "ponglehub.co.uk/v1alpha1",
@@ -28,12 +25,12 @@ func (db *RedisDB) toUnstructured() *unstructured.Unstructured {
 	return result
 }
 
-func (db *RedisDB) fromUnstructured(obj *unstructured.Unstructured) {
+func (db *RedisDB) FromUnstructured(obj *unstructured.Unstructured) {
 	db.Name = obj.GetName()
 	db.Namespace = obj.GetNamespace()
 }
 
-func (db *RedisDB) getName() string {
+func (db *RedisDB) GetName() string {
 	return db.Name
 }
 
@@ -43,15 +40,6 @@ var RedisDBSchema = schema.GroupVersionResource{
 	Resource: "redisdbs",
 }
 
-func (c *Client) RedisDBCreate(ctx context.Context, db CockroachDB) error {
-	_, err := c.client.Resource(RedisDBSchema).Namespace(db.Namespace).Create(ctx, db.toUnstructured(), v1.CreateOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to create redisdb: %+v", err)
-	}
-
-	return nil
-}
-
-func (c *Client) RedisDBWatch(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]RedisDB, error) {
-	return watchResource[RedisDB](c.client, ctx, cancel, namespace, RedisDBSchema)
+func NewRedisDBClient(namespace string) (*generic_client.Client[RedisDB, *RedisDB], error) {
+	return generic_client.New[RedisDB](RedisDBSchema, namespace)
 }

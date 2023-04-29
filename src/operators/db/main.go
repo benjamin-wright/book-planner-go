@@ -24,16 +24,26 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	dbs, err := cli.CockroachDBWatch(ctx, cancel, namespace)
+	cockroachDBs, err := cli.CockroachDBWatch(ctx, cancel, namespace)
 	if err != nil {
-		zap.S().Fatalf("Failed to watch cockroachdbs: %+v", err)
+		zap.S().Fatalf("Failed to watch cockroach dbs: %+v", err)
 	}
 
-	go func(dbs <-chan map[string]*k8s.CockroachDB) {
-		for db := range dbs {
-			zap.S().Infof("Event: %+v", db)
+	redisDBs, err := cli.RedisDBWatch(ctx, cancel, namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to watch redis dbs: %+v", err)
+	}
+
+	go func(cdbs <-chan map[string]k8s.CockroachDB, rdbs <-chan map[string]k8s.RedisDB) {
+		for {
+			select {
+			case db := <-cdbs:
+				zap.S().Infof("Event: %+v", db)
+			case db := <-rdbs:
+				zap.S().Infof("Event: %+v", db)
+			}
 		}
-	}(dbs)
+	}(cockroachDBs, redisDBs)
 
 	zap.S().Info("Running!")
 

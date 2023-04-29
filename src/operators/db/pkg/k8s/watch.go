@@ -6,28 +6,50 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/tools/cache"
 )
 
-type watchOptions struct {
-	namespace  string
-	schema     schema.GroupVersionResource
-	addFunc    func(obj *unstructured.Unstructured)
-	updateFunc func(oldObj, newObj *unstructured.Unstructured)
-	deleteFunc func(obj *unstructured.Unstructured)
+type watchable[T any] interface {
+	*T
+	getName() string
+	toUnstructured() *unstructured.Unstructured
+	fromUnstructured(obj *unstructured.Unstructured)
 }
 
-func (c *Client) watchResource(ctx context.Context, cancel context.CancelFunc, options watchOptions) error {
-	factory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(c.client, time.Minute, options.namespace, nil)
-	informer := factory.ForResource(options.schema).Informer()
+func watchResource[T any, PT watchable[T]](client dynamic.Interface, ctx context.Context, cancel context.CancelFunc, namespace string, schema schema.GroupVersionResource) (<-chan map[string]T, error) {
+	resources := map[string]T{}
+	output := make(chan map[string]T, 1)
+	convert := func(obj interface{}) (string, T) {
+		var res T
+		ptr := PT(&res)
+		ptr.fromUnstructured(obj.(*unstructured.Unstructured))
+		return ptr.getName(), res
+	}
+
+	factory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(client, time.Minute, namespace, nil)
+	informer := factory.ForResource(schema).Informer()
 
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) { options.addFunc(obj.(*unstructured.Unstructured)) },
-		UpdateFunc: func(oldObj, newObj interface{}) {
-			options.updateFunc(oldObj.(*unstructured.Unstructured), newObj.(*unstructured.Unstructured))
+		AddFunc: func(obj interface{}) {
+			name, res := convert(obj)
+			resources[name] = res
+
+			output <- resources
 		},
-		DeleteFunc: func(obj interface{}) { options.deleteFunc(obj.(*unstructured.Unstructured)) },
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			name, res := convert(newObj)
+			resources[name] = res
+
+			output <- resources
+		},
+		DeleteFunc: func(obj interface{}) {
+			name, _ := convert(obj)
+			delete(resources, name)
+
+			output <- resources
+		},
 	})
 
 	go func() {
@@ -37,5 +59,5 @@ func (c *Client) watchResource(ctx context.Context, cancel context.CancelFunc, o
 		}
 	}()
 
-	return nil
+	return output, nil
 }

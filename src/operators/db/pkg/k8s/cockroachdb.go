@@ -3,14 +3,10 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"time"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/dynamic/dynamicinformer"
-	"k8s.io/client-go/tools/cache"
 )
 
 type CockroachDB struct {
@@ -41,6 +37,12 @@ func (db *CockroachDB) getName() string {
 	return db.Name
 }
 
+var CockroachDBSchema = schema.GroupVersionResource{
+	Group:    "ponglehub.co.uk",
+	Version:  "v1alpha1",
+	Resource: "cockroachdbs",
+}
+
 func (c *Client) CockroachDBCreate(ctx context.Context, db CockroachDB) error {
 	_, err := c.client.Resource(CockroachDBSchema).Namespace(db.Namespace).Create(ctx, db.toUnstructured(), v1.CreateOptions{})
 	if err != nil {
@@ -50,60 +52,6 @@ func (c *Client) CockroachDBCreate(ctx context.Context, db CockroachDB) error {
 	return nil
 }
 
-type Resources[T watchable] struct {
-	resources map[string]T
-}
-
-func (r *Resources[T]) Add(obj interface{}) {
-	var res T
-	res.fromUnstructured(obj.(*unstructured.Unstructured))
-	r.resources[res.getName()] = res
-}
-
-func (r *Resources[T]) Delete(obj interface{}) {
-	var res T
-	res.fromUnstructured(obj.(*unstructured.Unstructured))
-	delete(r.resources, res.getName())
-}
-
-type watchable interface {
-	getName() string
-	toUnstructured() *unstructured.Unstructured
-	fromUnstructured(obj *unstructured.Unstructured)
-}
-
-func watchResource[T watchable](client dynamic.Interface, ctx context.Context, cancel context.CancelFunc, namespace string, schema schema.GroupVersionResource) (<-chan map[string]T, error) {
-	resources := Resources[T]{}
-	output := make(chan map[string]T, 1)
-
-	factory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(client, time.Minute, namespace, nil)
-	informer := factory.ForResource(schema).Informer()
-
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			resources.Add(obj)
-			output <- resources.resources
-		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
-			resources.Add(newObj)
-			output <- resources.resources
-		},
-		DeleteFunc: func(obj interface{}) {
-			resources.Delete(obj)
-			output <- resources.resources
-		},
-	})
-
-	go func() {
-		informer.Run(ctx.Done())
-		if ctx.Err() == nil {
-			cancel()
-		}
-	}()
-
-	return output, nil
-}
-
-func (c *Client) CockroachDBWatch(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]*CockroachDB, error) {
-	return watchResource[*CockroachDB](c.client, ctx, cancel, namespace, CockroachDBSchema)
+func (c *Client) CockroachDBWatch(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]CockroachDB, error) {
+	return watchResource[CockroachDB](c.client, ctx, cancel, namespace, CockroachDBSchema)
 }

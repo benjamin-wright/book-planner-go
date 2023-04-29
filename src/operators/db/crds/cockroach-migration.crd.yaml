@@ -15,6 +15,8 @@ spec:
             spec:
               type: object
               properties:
+                deployment:
+                  type: string
                 database:
                   type: string
                 migration:

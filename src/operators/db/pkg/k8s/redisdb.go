@@ -9,6 +9,7 @@ import (
 type RedisDB struct {
 	Name      string
 	Namespace string
+	Storage   string
 }
 
 func (db *RedisDB) ToUnstructured() *unstructured.Unstructured {
@@ -19,7 +20,9 @@ func (db *RedisDB) ToUnstructured() *unstructured.Unstructured {
 		"metadata": map[string]interface{}{
 			"name": db.Name,
 		},
-		"spec": map[string]interface{}{},
+		"spec": map[string]interface{}{
+			"storage": db.Storage,
+		},
 	})
 
 	return result

@@ -9,6 +9,7 @@ import (
 type CockroachDB struct {
 	Name      string
 	Namespace string
+	Storage   string
 }
 
 func (db *CockroachDB) ToUnstructured() *unstructured.Unstructured {
@@ -19,7 +20,9 @@ func (db *CockroachDB) ToUnstructured() *unstructured.Unstructured {
 		"metadata": map[string]interface{}{
 			"name": db.Name,
 		},
-		"spec": map[string]interface{}{},
+		"spec": map[string]interface{}{
+			"storage": db.Storage,
+		},
 	})
 
 	return result
@@ -28,6 +31,10 @@ func (db *CockroachDB) ToUnstructured() *unstructured.Unstructured {
 func (db *CockroachDB) FromUnstructured(obj *unstructured.Unstructured) {
 	db.Name = obj.GetName()
 	db.Namespace = obj.GetNamespace()
+
+	spec := obj.Object["spec"]
+	storage := spec.(map[string]interface{})["storage"]
+	db.Storage = storage.(string)
 }
 
 func (db *CockroachDB) GetName() string {

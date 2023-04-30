@@ -20,13 +20,27 @@ type Resource[T any] interface {
 	*T
 	GetName() string
 	ToUnstructured() *unstructured.Unstructured
-	FromUnstructured(obj *unstructured.Unstructured)
+	FromUnstructured(obj *unstructured.Unstructured) error
 }
 
 type Client[T any, PT Resource[T]] struct {
 	client    dynamic.Interface
 	namespace string
 	schema    schema.GroupVersionResource
+}
+
+func Watch[T any, PT Resource[T]](ctx context.Context, cancel context.CancelFunc, schema schema.GroupVersionResource, namespace string) (<-chan map[string]T, error) {
+	cli, err := New[T, PT](schema, namespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create client: %+v", err)
+	}
+
+	stream, err := cli.Watch(ctx, cancel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start watch: %+v", err)
+	}
+
+	return stream, nil
 }
 
 func New[T any, PT Resource[T]](schema schema.GroupVersionResource, namespace string) (*Client[T, PT], error) {
@@ -64,6 +78,24 @@ func (c *Client[T, PT]) Create(ctx context.Context, resource T) error {
 	_, err := c.client.Resource(c.schema).Namespace(c.namespace).Create(ctx, ptr.ToUnstructured(), v1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create %T: %+v", resource, err)
+	}
+
+	return nil
+}
+
+func (c *Client[T, PT]) Delete(ctx context.Context, name string) error {
+	err := c.client.Resource(c.schema).Namespace(c.namespace).Delete(ctx, name, v1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete %T: %+v", name, err)
+	}
+
+	return nil
+}
+
+func (c *Client[T, PT]) DeleteAll(ctx context.Context) error {
+	err := c.client.Resource(c.schema).Namespace(c.namespace).DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete all resources: %+v", err)
 	}
 
 	return nil

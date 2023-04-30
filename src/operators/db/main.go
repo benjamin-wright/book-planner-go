@@ -8,6 +8,7 @@ import (
 
 	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/k8s"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/manager"
 )
 
 func main() {
@@ -20,36 +21,27 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	cdbClient, err := k8s.NewCockroachDBClient(namespace)
-	if err != nil {
-		zap.S().Fatalf("Failed to create k8s client: %+v", err)
-	}
-
-	cockroachDBs, err := cdbClient.Watch(ctx, cancel)
+	cdbs, err := k8s.WatchCockroachDBs(ctx, cancel, namespace)
 	if err != nil {
 		zap.S().Fatalf("Failed to watch cockroach dbs: %+v", err)
 	}
 
-	rdbClient, err := k8s.NewRedisDBClient(namespace)
+	cclients, err := k8s.WatchCockroachClients(ctx, cancel, namespace)
 	if err != nil {
-		zap.S().Fatalf("Failed to create k8s client: %+v", err)
+		zap.S().Fatalf("Failed to watch cockroach clients: %+v", err)
 	}
 
-	redisDBs, err := rdbClient.Watch(ctx, cancel)
+	cmigrations, err := k8s.WatchCockroachMigrations(ctx, cancel, namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to watch cockroach migrations: %+v", err)
+	}
+
+	rdbs, err := k8s.WatchRedisDBs(ctx, cancel, namespace)
 	if err != nil {
 		zap.S().Fatalf("Failed to watch redis dbs: %+v", err)
 	}
 
-	go func(cdbs <-chan map[string]k8s.CockroachDB, rdbs <-chan map[string]k8s.RedisDB) {
-		for {
-			select {
-			case db := <-cdbs:
-				zap.S().Infof("Event: %+v", db)
-			case db := <-rdbs:
-				zap.S().Infof("Event: %+v", db)
-			}
-		}
-	}(cockroachDBs, redisDBs)
+	manager.Manage(ctx, cdbs, cclients, cmigrations, rdbs)
 
 	zap.S().Info("Running!")
 

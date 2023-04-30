@@ -1,6 +1,9 @@
 package k8s
 
 import (
+	"context"
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/k8s/generic_client"
@@ -34,9 +37,29 @@ func (cm *CockroachMigration) ToUnstructured() *unstructured.Unstructured {
 	return result
 }
 
-func (db *CockroachMigration) FromUnstructured(obj *unstructured.Unstructured) {
-	db.Name = obj.GetName()
-	db.Namespace = obj.GetNamespace()
+func (m *CockroachMigration) FromUnstructured(obj *unstructured.Unstructured) error {
+	var err error
+
+	m.Name = obj.GetName()
+	m.Namespace = obj.GetNamespace()
+	m.Deployment, err = getProperty[string](obj, "spec", "deployment")
+	if err != nil {
+		return fmt.Errorf("failed to get deployment: %+v", err)
+	}
+	m.Database, err = getProperty[string](obj, "spec", "database")
+	if err != nil {
+		return fmt.Errorf("failed to get database: %+v", err)
+	}
+	m.Migration, err = getProperty[string](obj, "spec", "migration")
+	if err != nil {
+		return fmt.Errorf("failed to get migration: %+v", err)
+	}
+	m.Index, err = getProperty[int](obj, "spec", "index")
+	if err != nil {
+		return fmt.Errorf("failed to get index: %+v", err)
+	}
+
+	return nil
 }
 
 func (db *CockroachMigration) GetName() string {
@@ -51,4 +74,8 @@ var CockroachMigrationSchema = schema.GroupVersionResource{
 
 func NewCockroachMigrationClient(namespace string) (*generic_client.Client[CockroachMigration, *CockroachMigration], error) {
 	return generic_client.New[CockroachMigration](CockroachMigrationSchema, namespace)
+}
+
+func WatchCockroachMigrations(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]CockroachMigration, error) {
+	return generic_client.Watch[CockroachMigration](ctx, cancel, CockroachMigrationSchema, namespace)
 }

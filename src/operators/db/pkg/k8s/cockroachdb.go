@@ -1,6 +1,9 @@
 package k8s
 
 import (
+	"context"
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/k8s/generic_client"
@@ -28,13 +31,17 @@ func (db *CockroachDB) ToUnstructured() *unstructured.Unstructured {
 	return result
 }
 
-func (db *CockroachDB) FromUnstructured(obj *unstructured.Unstructured) {
+func (db *CockroachDB) FromUnstructured(obj *unstructured.Unstructured) error {
+	var err error
+
 	db.Name = obj.GetName()
 	db.Namespace = obj.GetNamespace()
+	db.Storage, err = getProperty[string](obj, "spec", "storage")
+	if err != nil {
+		return fmt.Errorf("failed to get storage: %+v", err)
+	}
 
-	spec := obj.Object["spec"]
-	storage := spec.(map[string]interface{})["storage"]
-	db.Storage = storage.(string)
+	return nil
 }
 
 func (db *CockroachDB) GetName() string {
@@ -49,4 +56,8 @@ var CockroachDBSchema = schema.GroupVersionResource{
 
 func NewCockroachDBClient(namespace string) (*generic_client.Client[CockroachDB, *CockroachDB], error) {
 	return generic_client.New[CockroachDB](CockroachDBSchema, namespace)
+}
+
+func WatchCockroachDBs(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]CockroachDB, error) {
+	return generic_client.Watch[CockroachDB](ctx, cancel, CockroachDBSchema, namespace)
 }

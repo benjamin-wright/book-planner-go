@@ -24,9 +24,16 @@ func TestSomethingIntegration(t *testing.T) {
 		t.FailNow()
 	}
 
+	err = cli.DeleteAll(context.Background())
+	if err != nil {
+		t.Logf("failed to clear existing dbs: %+v", err)
+		t.FailNow()
+	}
+
 	err = cli.Create(context.Background(), k8s.CockroachDB{
 		Name:      "test-db",
 		Namespace: namespace,
+		Storage:   "1Gi",
 	})
 	if err != nil {
 		t.Logf("failed to create test db: %+v", err)
@@ -36,13 +43,10 @@ func TestSomethingIntegration(t *testing.T) {
 	err = cli.Create(context.Background(), k8s.CockroachDB{
 		Name:      "other-db",
 		Namespace: namespace,
+		Storage:   "512Mi",
 	})
 	if err != nil {
 		t.Logf("failed to create other db: %+v", err)
 		t.FailNow()
 	}
-}
-
-func TestSomething(t *testing.T) {
-	t.Log("Working!")
 }

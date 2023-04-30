@@ -1,6 +1,9 @@
 package k8s
 
 import (
+	"context"
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/k8s/generic_client"
@@ -32,9 +35,27 @@ func (cli *CockroachClient) ToUnstructured() *unstructured.Unstructured {
 	return result
 }
 
-func (db *CockroachClient) FromUnstructured(obj *unstructured.Unstructured) {
+func (db *CockroachClient) FromUnstructured(obj *unstructured.Unstructured) error {
+	var err error
+
 	db.Name = obj.GetName()
 	db.Namespace = obj.GetNamespace()
+	db.Deployment, err = getProperty[string](obj, "spec", "deployment")
+	if err != nil {
+		return fmt.Errorf("failed to get deployment: %+v", err)
+	}
+
+	db.Database, err = getProperty[string](obj, "spec", "database")
+	if err != nil {
+		return fmt.Errorf("failed to get database: %+v", err)
+	}
+
+	db.Username, err = getProperty[string](obj, "spec", "username")
+	if err != nil {
+		return fmt.Errorf("failed to get username: %+v", err)
+	}
+
+	return nil
 }
 
 func (db *CockroachClient) GetName() string {
@@ -49,4 +70,8 @@ var CockroachClientSchema = schema.GroupVersionResource{
 
 func NewCockroachClientClient(namespace string) (*generic_client.Client[CockroachClient, *CockroachClient], error) {
 	return generic_client.New[CockroachClient](CockroachClientSchema, namespace)
+}
+
+func WatchCockroachClients(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]CockroachClient, error) {
+	return generic_client.Watch[CockroachClient](ctx, cancel, CockroachClientSchema, namespace)
 }

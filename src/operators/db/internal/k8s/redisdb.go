@@ -6,7 +6,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/k8s/generic_client"
+	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
 type RedisDB struct {
@@ -54,10 +54,10 @@ var RedisDBSchema = schema.GroupVersionResource{
 	Resource: "redisdbs",
 }
 
-func NewRedisDBClient(namespace string) (*generic_client.Client[RedisDB, *RedisDB], error) {
-	return generic_client.New[RedisDB](RedisDBSchema, namespace)
+func NewRedisDBClient(namespace string) (*k8s_generic.Client[RedisDB, *RedisDB], error) {
+	return k8s_generic.New[RedisDB](RedisDBSchema, namespace)
 }
 
 func WatchRedisDBs(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]RedisDB, error) {
-	return generic_client.Watch[RedisDB](ctx, cancel, RedisDBSchema, namespace)
+	return k8s_generic.Watch[RedisDB](ctx, cancel, RedisDBSchema, namespace)
 }

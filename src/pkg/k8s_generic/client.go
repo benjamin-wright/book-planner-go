@@ -1,4 +1,4 @@
-package generic_client
+package k8s_generic
 
 import (
 	"context"

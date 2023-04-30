@@ -3,7 +3,7 @@ package manager
 import (
 	"context"
 
-	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/k8s"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/k8s"
 )
 
 func Manage(

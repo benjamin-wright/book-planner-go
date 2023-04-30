@@ -6,7 +6,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/k8s/generic_client"
+	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
 type CockroachClient struct {
@@ -68,10 +68,10 @@ var CockroachClientSchema = schema.GroupVersionResource{
 	Resource: "cockroachclients",
 }
 
-func NewCockroachClientClient(namespace string) (*generic_client.Client[CockroachClient, *CockroachClient], error) {
-	return generic_client.New[CockroachClient](CockroachClientSchema, namespace)
+func NewCockroachClientClient(namespace string) (*k8s_generic.Client[CockroachClient, *CockroachClient], error) {
+	return k8s_generic.New[CockroachClient](CockroachClientSchema, namespace)
 }
 
 func WatchCockroachClients(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]CockroachClient, error) {
-	return generic_client.Watch[CockroachClient](ctx, cancel, CockroachClientSchema, namespace)
+	return k8s_generic.Watch[CockroachClient](ctx, cancel, CockroachClientSchema, namespace)
 }

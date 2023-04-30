@@ -6,7 +6,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/k8s/generic_client"
+	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
 type CockroachDB struct {
@@ -54,10 +54,10 @@ var CockroachDBSchema = schema.GroupVersionResource{
 	Resource: "cockroachdbs",
 }
 
-func NewCockroachDBClient(namespace string) (*generic_client.Client[CockroachDB, *CockroachDB], error) {
-	return generic_client.New[CockroachDB](CockroachDBSchema, namespace)
+func NewCockroachDBClient(namespace string) (*k8s_generic.Client[CockroachDB, *CockroachDB], error) {
+	return k8s_generic.New[CockroachDB](CockroachDBSchema, namespace)
 }
 
 func WatchCockroachDBs(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]CockroachDB, error) {
-	return generic_client.Watch[CockroachDB](ctx, cancel, CockroachDBSchema, namespace)
+	return k8s_generic.Watch[CockroachDB](ctx, cancel, CockroachDBSchema, namespace)
 }

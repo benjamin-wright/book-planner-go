@@ -7,8 +7,8 @@ import (
 	"os/signal"
 
 	"go.uber.org/zap"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/k8s"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/pkg/manager"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/k8s"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/manager"
 )
 
 func main() {

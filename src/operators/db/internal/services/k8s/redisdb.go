@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"context"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -9,17 +8,17 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type CockroachDB struct {
+type RedisDB struct {
 	Name      string
 	Namespace string
 	Storage   string
 }
 
-func (db *CockroachDB) ToUnstructured() *unstructured.Unstructured {
+func (db *RedisDB) ToUnstructured() *unstructured.Unstructured {
 	result := &unstructured.Unstructured{}
 	result.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "ponglehub.co.uk/v1alpha1",
-		"kind":       "CockroachDB",
+		"kind":       "RedisDB",
 		"metadata": map[string]interface{}{
 			"name": db.Name,
 		},
@@ -31,7 +30,7 @@ func (db *CockroachDB) ToUnstructured() *unstructured.Unstructured {
 	return result
 }
 
-func (db *CockroachDB) FromUnstructured(obj *unstructured.Unstructured) error {
+func (db *RedisDB) FromUnstructured(obj *unstructured.Unstructured) error {
 	var err error
 
 	db.Name = obj.GetName()
@@ -44,20 +43,16 @@ func (db *CockroachDB) FromUnstructured(obj *unstructured.Unstructured) error {
 	return nil
 }
 
-func (db *CockroachDB) GetName() string {
+func (db *RedisDB) GetName() string {
 	return db.Name
 }
 
-var CockroachDBSchema = schema.GroupVersionResource{
+var RedisDBSchema = schema.GroupVersionResource{
 	Group:    "ponglehub.co.uk",
 	Version:  "v1alpha1",
-	Resource: "cockroachdbs",
+	Resource: "redisdbs",
 }
 
-func NewCockroachDBClient(namespace string) (*k8s_generic.Client[CockroachDB, *CockroachDB], error) {
-	return k8s_generic.New[CockroachDB](CockroachDBSchema, namespace)
-}
-
-func WatchCockroachDBs(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]CockroachDB, error) {
-	return k8s_generic.Watch[CockroachDB](ctx, cancel, CockroachDBSchema, namespace)
+func NewRedisDBClient(namespace string) (*k8s_generic.Client[RedisDB, *RedisDB], error) {
+	return k8s_generic.New[RedisDB](RedisDBSchema, namespace)
 }

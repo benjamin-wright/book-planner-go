@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"context"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -70,8 +69,4 @@ var CockroachClientSchema = schema.GroupVersionResource{
 
 func NewCockroachClientClient(namespace string) (*k8s_generic.Client[CockroachClient, *CockroachClient], error) {
 	return k8s_generic.New[CockroachClient](CockroachClientSchema, namespace)
-}
-
-func WatchCockroachClients(ctx context.Context, cancel context.CancelFunc, namespace string) (<-chan map[string]CockroachClient, error) {
-	return k8s_generic.Watch[CockroachClient](ctx, cancel, CockroachClientSchema, namespace)
 }

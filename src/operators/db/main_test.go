@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/k8s"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s"
 )
 
 func TestSomethingIntegration(t *testing.T) {

@@ -29,20 +29,6 @@ type Client[T any, PT Resource[T]] struct {
 	schema    schema.GroupVersionResource
 }
 
-func Watch[T any, PT Resource[T]](ctx context.Context, cancel context.CancelFunc, schema schema.GroupVersionResource, namespace string) (<-chan map[string]T, error) {
-	cli, err := New[T, PT](schema, namespace)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %+v", err)
-	}
-
-	stream, err := cli.Watch(ctx, cancel)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start watch: %+v", err)
-	}
-
-	return stream, nil
-}
-
 func New[T any, PT Resource[T]](schema schema.GroupVersionResource, namespace string) (*Client[T, PT], error) {
 	kubeconfig := os.Getenv("KUBECONFIG")
 	var config *rest.Config

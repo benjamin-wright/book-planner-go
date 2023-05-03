@@ -38,9 +38,10 @@ func main() {
 		zap.S().Fatalf("Failed to watch redis dbs: %+v", err)
 	}
 
-	cancel, err := manager.Manage(cdbClient, ccClient, cmClient, rdbClient)
+	m := manager.New(cdbClient, ccClient, cmClient, rdbClient)
+	cancel, err := m.Start()
 	if err != nil {
-		zap.S().Fatalf("Failed to run the manager: %+v", err)
+		zap.S().Fatalf("Failed to start the manager: %+v", err)
 	}
 
 	zap.S().Info("Running!")

@@ -87,14 +87,18 @@ func (c *Client[T, PT]) DeleteAll(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client[T, PT]) Watch(ctx context.Context, cancel context.CancelFunc) (<-chan map[string]T, error) {
-	resources := map[string]T{}
-	output := make(chan map[string]T, 1)
-	convert := func(obj interface{}) (string, T) {
+type Update[T any] struct {
+	ToAdd    []T
+	ToRemove []T
+}
+
+func (c *Client[T, PT]) Watch(ctx context.Context, cancel context.CancelFunc) (<-chan Update[T], error) {
+	output := make(chan Update[T], 1)
+	convert := func(obj interface{}) T {
 		var res T
 		ptr := PT(&res)
 		ptr.FromUnstructured(obj.(*unstructured.Unstructured))
-		return ptr.GetName(), res
+		return res
 	}
 
 	factory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(c.client, time.Minute, c.namespace, nil)
@@ -102,22 +106,29 @@ func (c *Client[T, PT]) Watch(ctx context.Context, cancel context.CancelFunc) (<
 
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			name, res := convert(obj)
-			resources[name] = res
+			res := convert(obj)
 
-			output <- resources
+			output <- Update[T]{
+				ToAdd:    []T{res},
+				ToRemove: []T{},
+			}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			name, res := convert(newObj)
-			resources[name] = res
+			oldRes := convert(oldObj)
+			newRes := convert(newObj)
 
-			output <- resources
+			output <- Update[T]{
+				ToAdd:    []T{newRes},
+				ToRemove: []T{oldRes},
+			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			name, _ := convert(obj)
-			delete(resources, name)
+			res := convert(obj)
 
-			output <- resources
+			output <- Update[T]{
+				ToAdd:    []T{},
+				ToRemove: []T{res},
+			}
 		},
 	})
 

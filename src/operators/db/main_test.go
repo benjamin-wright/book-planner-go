@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/crds"
 )
 
 func TestSomethingIntegration(t *testing.T) {
@@ -18,7 +18,7 @@ func TestSomethingIntegration(t *testing.T) {
 
 	namespace := os.Getenv("NAMESPACE")
 
-	cli, err := k8s.NewCockroachDBClient(namespace)
+	cli, err := crds.NewCockroachDBClient(namespace)
 	if err != nil {
 		t.Logf("failed to create kube client: %+v", err)
 		t.FailNow()
@@ -30,20 +30,18 @@ func TestSomethingIntegration(t *testing.T) {
 		t.FailNow()
 	}
 
-	err = cli.Create(context.Background(), k8s.CockroachDB{
-		Name:      "test-db",
-		Namespace: namespace,
-		Storage:   "1Gi",
+	err = cli.Create(context.Background(), crds.CockroachDB{
+		Name:    "tests-db",
+		Storage: "1Gi",
 	})
 	if err != nil {
 		t.Logf("failed to create test db: %+v", err)
 		t.FailNow()
 	}
 
-	err = cli.Create(context.Background(), k8s.CockroachDB{
-		Name:      "other-db",
-		Namespace: namespace,
-		Storage:   "512Mi",
+	err = cli.Create(context.Background(), crds.CockroachDB{
+		Name:    "other-db",
+		Storage: "512Mi",
 	})
 	if err != nil {
 		t.Logf("failed to create other db: %+v", err)

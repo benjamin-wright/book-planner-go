@@ -1,16 +1,16 @@
-package k8s
+package crds
 
 import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/utils"
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
 type CockroachMigration struct {
 	Name       string
-	Namespace  string
 	Deployment string
 	Database   string
 	Migration  string
@@ -40,20 +40,19 @@ func (m *CockroachMigration) FromUnstructured(obj *unstructured.Unstructured) er
 	var err error
 
 	m.Name = obj.GetName()
-	m.Namespace = obj.GetNamespace()
-	m.Deployment, err = getProperty[string](obj, "spec", "deployment")
+	m.Deployment, err = utils.GetProperty[string](obj, "spec", "deployment")
 	if err != nil {
 		return fmt.Errorf("failed to get deployment: %+v", err)
 	}
-	m.Database, err = getProperty[string](obj, "spec", "database")
+	m.Database, err = utils.GetProperty[string](obj, "spec", "database")
 	if err != nil {
 		return fmt.Errorf("failed to get database: %+v", err)
 	}
-	m.Migration, err = getProperty[string](obj, "spec", "migration")
+	m.Migration, err = utils.GetProperty[string](obj, "spec", "migration")
 	if err != nil {
 		return fmt.Errorf("failed to get migration: %+v", err)
 	}
-	m.Index, err = getProperty[int](obj, "spec", "index")
+	m.Index, err = utils.GetProperty[int](obj, "spec", "index")
 	if err != nil {
 		return fmt.Errorf("failed to get index: %+v", err)
 	}

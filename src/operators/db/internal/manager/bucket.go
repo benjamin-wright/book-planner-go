@@ -1,12 +1,20 @@
 package manager
 
-import "ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
+import (
+	"go.uber.org/zap"
+	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
+)
 
-type bucket[T any, PT k8s_generic.Resource[T]] struct {
+type Nameable[T any] interface {
+	*T
+	GetName() string
+}
+
+type bucket[T any, PT Nameable[T]] struct {
 	state map[string]T
 }
 
-func newBucket[T any, PT k8s_generic.Resource[T]]() bucket[T, PT] {
+func newBucket[T any, PT Nameable[T]]() bucket[T, PT] {
 	return bucket[T, PT]{
 		state: map[string]T{},
 	}
@@ -14,10 +22,12 @@ func newBucket[T any, PT k8s_generic.Resource[T]]() bucket[T, PT] {
 
 func (b *bucket[T, PT]) apply(update k8s_generic.Update[T]) {
 	for _, toRemove := range update.ToRemove {
+		zap.S().Infof("Removing %s", PT(&toRemove).GetName())
 		b.remove(toRemove)
 	}
 
 	for _, toAdd := range update.ToAdd {
+		zap.S().Infof("Adding %s", PT(&toAdd).GetName())
 		b.add(toAdd)
 	}
 }

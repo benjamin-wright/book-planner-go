@@ -21,7 +21,9 @@ spec:
                   type: string
                 username:
                   type: string
-              required: [ deployment, database, username ]
+                secret:
+                  type: string
+              required: [ deployment, database, username, secret ]
             status:
               type: object
               properties:

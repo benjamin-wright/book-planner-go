@@ -6,17 +6,19 @@ type CockroachDB struct {
 	Ready     bool
 }
 
+func (c *CockroachDB) GetName() string {
+	return c.Name
+}
+
 type CockroachDatabase struct {
-	Name    string
-	Clients []CockroachClient
+	Name string
+	DB   string
+}
+
+func (c *CockroachDatabase) GetName() string {
+	return c.DB + c.Name
 }
 
 type CockroachClient struct {
-	Name   string
-	Secret string
-}
-
-type CockroachCredentials struct {
-	Name  string
-	Ready bool
+	Name string
 }

@@ -1,19 +1,20 @@
-package k8s
+package crds
 
 import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/utils"
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
 type CockroachClient struct {
 	Name       string
-	Namespace  string
 	Deployment string
 	Database   string
 	Username   string
+	Secret     string
 }
 
 func (cli *CockroachClient) ToUnstructured() *unstructured.Unstructured {
@@ -28,6 +29,7 @@ func (cli *CockroachClient) ToUnstructured() *unstructured.Unstructured {
 			"deployment": cli.Deployment,
 			"database":   cli.Database,
 			"username":   cli.Username,
+			"secret":     cli.Secret,
 		},
 	})
 
@@ -38,20 +40,24 @@ func (db *CockroachClient) FromUnstructured(obj *unstructured.Unstructured) erro
 	var err error
 
 	db.Name = obj.GetName()
-	db.Namespace = obj.GetNamespace()
-	db.Deployment, err = getProperty[string](obj, "spec", "deployment")
+	db.Deployment, err = utils.GetProperty[string](obj, "spec", "deployment")
 	if err != nil {
 		return fmt.Errorf("failed to get deployment: %+v", err)
 	}
 
-	db.Database, err = getProperty[string](obj, "spec", "database")
+	db.Database, err = utils.GetProperty[string](obj, "spec", "database")
 	if err != nil {
 		return fmt.Errorf("failed to get database: %+v", err)
 	}
 
-	db.Username, err = getProperty[string](obj, "spec", "username")
+	db.Username, err = utils.GetProperty[string](obj, "spec", "username")
 	if err != nil {
 		return fmt.Errorf("failed to get username: %+v", err)
+	}
+
+	db.Secret, err = utils.GetProperty[string](obj, "spec", "secret")
+	if err != nil {
+		return fmt.Errorf("failed to get secret: %+v", err)
 	}
 
 	return nil

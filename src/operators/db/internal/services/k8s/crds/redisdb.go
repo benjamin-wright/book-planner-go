@@ -1,17 +1,17 @@
-package k8s
+package crds
 
 import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/utils"
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
 type RedisDB struct {
-	Name      string
-	Namespace string
-	Storage   string
+	Name    string
+	Storage string
 }
 
 func (db *RedisDB) ToUnstructured() *unstructured.Unstructured {
@@ -34,8 +34,7 @@ func (db *RedisDB) FromUnstructured(obj *unstructured.Unstructured) error {
 	var err error
 
 	db.Name = obj.GetName()
-	db.Namespace = obj.GetNamespace()
-	db.Storage, err = getProperty[string](obj, "spec", "storage")
+	db.Storage, err = utils.GetProperty[string](obj, "spec", "storage")
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %+v", err)
 	}

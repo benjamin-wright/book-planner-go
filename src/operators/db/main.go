@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"time"
 
 	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/manager"
@@ -45,7 +46,7 @@ func main() {
 	}
 
 	m := manager.New(cdbClient, ccClient, cmClient, rdbClient, cssClient)
-	cancel, err := m.Start()
+	err = m.Start(time.Second * 5)
 	if err != nil {
 		zap.S().Fatalf("Failed to start the manager: %+v", err)
 	}
@@ -59,5 +60,5 @@ func main() {
 	<-quit
 
 	log.Println("Shutdown Server...")
-	cancel()
+	m.Stop()
 }

@@ -47,6 +47,10 @@ func New(
 	}
 }
 
+func (m *Manager) Stop() {
+	m.cancel()
+}
+
 func (m *Manager) Start(debounce time.Duration) error {
 	cdbs, err := m.cdbs.Watch(m.ctx, m.cancel)
 	if err != nil {

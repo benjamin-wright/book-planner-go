@@ -9,7 +9,7 @@ import (
 )
 
 type BasicType interface {
-	string | int | map[string]string
+	string | int64 | bool | map[string]string
 }
 
 func GetProperty[T BasicType](u *unstructured.Unstructured, args ...string) (T, error) {
@@ -43,7 +43,7 @@ func GetProperty[T BasicType](u *unstructured.Unstructured, args ...string) (T, 
 
 	value, ok := current.(T)
 	if !ok {
-		return empty, fmt.Errorf("property %s is not the right type: %T", strings.Join(args, "."), value)
+		return empty, fmt.Errorf("property %s is not the right type: expected %T but got %T", strings.Join(args, "."), value, current)
 	}
 
 	return value, nil

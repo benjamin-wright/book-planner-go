@@ -14,7 +14,7 @@ type CockroachMigration struct {
 	Deployment string
 	Database   string
 	Migration  string
-	Index      int
+	Index      int64
 }
 
 func (cm *CockroachMigration) ToUnstructured() *unstructured.Unstructured {
@@ -52,7 +52,7 @@ func (m *CockroachMigration) FromUnstructured(obj *unstructured.Unstructured) er
 	if err != nil {
 		return fmt.Errorf("failed to get migration: %+v", err)
 	}
-	m.Index, err = utils.GetProperty[int](obj, "spec", "index")
+	m.Index, err = utils.GetProperty[int64](obj, "spec", "index")
 	if err != nil {
 		return fmt.Errorf("failed to get index: %+v", err)
 	}

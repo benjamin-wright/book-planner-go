@@ -25,6 +25,8 @@ type Manager struct {
 type K8sClient[T any] interface {
 	Watch(ctx context.Context, cancel context.CancelFunc) (<-chan k8s_generic.Update[T], error)
 	Create(ctx context.Context, resource T) error
+	Delete(ctx context.Context, name string) error
+	Update(ctx context.Context, resource T) error
 }
 
 func New(
@@ -105,7 +107,8 @@ func (m *Manager) Start(debounce time.Duration) error {
 				continue
 			case <-debouncer.Wait():
 				zap.S().Infof("Processing Started")
-				m.processCockroachDBs(state)
+				m.processCockroachDBs(&state)
+				m.processCockroachClients(&state)
 				zap.S().Infof("Processing Done")
 			case <-m.ctx.Done():
 				zap.S().Infof("context cancelled, exiting manager loop")
@@ -117,20 +120,49 @@ func (m *Manager) Start(debounce time.Duration) error {
 	return nil
 }
 
-func (m *Manager) processCockroachDBs(state state) {
-	for name, db := range state.cdbs.state {
-		if _, ok := state.csss.state[name]; !ok {
-			zap.S().Infof("Creating db: %s", name)
-			err := m.csss.Create(m.ctx, resources.CockroachStatefulSet{
-				Name:    name,
-				Storage: db.Storage,
-				CPU:     "0.1",
-				Memory:  "512Mi",
-			})
+func (m *Manager) processCockroachDBs(state *state) {
+	toAdd := []crds.CockroachDB{}
+	toRemove := []crds.CockroachDB{}
 
-			if err != nil {
-				zap.S().Errorf("Failed to create cockroachdb stateful set: %+v", err)
-			}
+	for name, db := range state.cdbs.state {
+		if ss, ok := state.csss.state[name]; !ok {
+			toAdd = append(toAdd, db)
+		} else if db.Storage != ss.Storage {
+			toRemove = append(toRemove, db)
 		}
 	}
+
+	for name, _ := range state.csss.state {
+		if db, ok := state.cdbs.state[name]; !ok {
+			toRemove = append(toRemove, db)
+		}
+	}
+
+	for _, db := range toRemove {
+		toRemove = append(toRemove, db)
+		zap.S().Infof("Deleting db: %s", db.Name)
+		err := m.csss.Delete(m.ctx, db.Name)
+
+		if err != nil {
+			zap.S().Errorf("Failed to delete cockroachdb stateful set: %+v", err)
+		}
+	}
+
+	for _, db := range toAdd {
+		zap.S().Infof("Creating db: %s", db.Name)
+		err := m.csss.Create(m.ctx, resources.CockroachStatefulSet{
+			Name:    db.Name,
+			Storage: db.Storage,
+			CPU:     "0.1",
+			Memory:  "512Mi",
+		})
+
+		if err != nil {
+			zap.S().Errorf("Failed to create cockroachdb stateful set: %+v", err)
+		}
+	}
+}
+
+func (m *Manager) processCockroachClients(state *state) {
+
 }

@@ -14,6 +14,7 @@ type CockroachStatefulSet struct {
 	Storage string
 	CPU     string
 	Memory  string
+	Ready   bool
 }
 
 func (s *CockroachStatefulSet) ToUnstructured() *unstructured.Unstructured {
@@ -140,6 +141,18 @@ func (s *CockroachStatefulSet) FromUnstructured(obj *unstructured.Unstructured) 
 	if err != nil {
 		return fmt.Errorf("failed to get memory: %+v", err)
 	}
+
+	replicas, err := utils.GetProperty[int64](obj, "status", "replicas")
+	if err != nil {
+		return fmt.Errorf("failed to get replicas: %+v", err)
+	}
+
+	readyReplicas, err := utils.GetProperty[int64](obj, "status", "readyReplicas")
+	if err != nil {
+		readyReplicas = 0
+	}
+
+	s.Ready = replicas == readyReplicas
 
 	return nil
 }

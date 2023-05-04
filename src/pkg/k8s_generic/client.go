@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"go.uber.org/zap"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -87,6 +88,17 @@ func (c *Client[T, PT]) DeleteAll(ctx context.Context) error {
 	return nil
 }
 
+func (c *Client[T, PT]) Update(ctx context.Context, resource T) error {
+	ptr := PT(&resource)
+
+	_, err := c.client.Resource(c.schema).Namespace(c.namespace).Update(ctx, ptr.ToUnstructured(), v1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed up update resource %s: %+v", ptr.GetName(), err)
+	}
+
+	return nil
+}
+
 type Update[T any] struct {
 	ToAdd    []T
 	ToRemove []T
@@ -97,7 +109,10 @@ func (c *Client[T, PT]) Watch(ctx context.Context, cancel context.CancelFunc) (<
 	convert := func(obj interface{}) T {
 		var res T
 		ptr := PT(&res)
-		ptr.FromUnstructured(obj.(*unstructured.Unstructured))
+		err := ptr.FromUnstructured(obj.(*unstructured.Unstructured))
+		if err != nil {
+			zap.S().Errorf("Failed to parse unstructured obj for %T: %+v\n %+v", res, err, obj)
+		}
 		return res
 	}
 

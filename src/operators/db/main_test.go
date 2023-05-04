@@ -40,7 +40,7 @@ func TestSomethingIntegration(t *testing.T) {
 	}
 
 	err = cli.Create(context.Background(), crds.CockroachDB{
-		Name:    "other-db",
+		Name:    "others-db",
 		Storage: "512Mi",
 	})
 	if err != nil {

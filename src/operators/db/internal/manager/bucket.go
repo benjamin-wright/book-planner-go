@@ -22,12 +22,12 @@ func newBucket[T any, PT Nameable[T]]() bucket[T, PT] {
 
 func (b *bucket[T, PT]) apply(update k8s_generic.Update[T]) {
 	for _, toRemove := range update.ToRemove {
-		zap.S().Infof("Removing %s", PT(&toRemove).GetName())
+		zap.S().Infof("Removing %T %s", toRemove, PT(&toRemove).GetName())
 		b.remove(toRemove)
 	}
 
 	for _, toAdd := range update.ToAdd {
-		zap.S().Infof("Adding %s", PT(&toAdd).GetName())
+		zap.S().Infof("Adding %T %s", toAdd, PT(&toAdd).GetName())
 		b.add(toAdd)
 	}
 }

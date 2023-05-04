@@ -3,7 +3,7 @@ registry_name := "book-planner-registry.localhost"
 registry_port := "5000"
 
 start: create-cluster setup-context wait-for-traefik
-stop: delete-cluster clear-context
+stop: delete-cluster clear-context clear-docker
 
 create-cluster:
     #!/usr/bin/env bash
@@ -33,6 +33,9 @@ clear-context:
     if [[ -f .scratch/kubeconfig ]]; then \
         rm .scratch/kubeconfig; \
     fi
+
+clear-docker:
+    docker system prune --all --volumes -f
 
 wait-for-traefik:
     #!/usr/bin/env bash

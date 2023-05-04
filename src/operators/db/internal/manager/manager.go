@@ -104,7 +104,9 @@ func (m *Manager) Start(debounce time.Duration) error {
 				debouncer.Trigger()
 				continue
 			case <-debouncer.Wait():
+				zap.S().Infof("Processing Started")
 				m.processCockroachDBs(state)
+				zap.S().Infof("Processing Done")
 			case <-m.ctx.Done():
 				zap.S().Infof("context cancelled, exiting manager loop")
 				return
@@ -118,10 +120,11 @@ func (m *Manager) Start(debounce time.Duration) error {
 func (m *Manager) processCockroachDBs(state state) {
 	for name, db := range state.cdbs.state {
 		if _, ok := state.csss.state[name]; !ok {
+			zap.S().Infof("Creating db: %s", name)
 			err := m.csss.Create(m.ctx, resources.CockroachStatefulSet{
 				Name:    name,
 				Storage: db.Storage,
-				CPU:     "100",
+				CPU:     "0.1",
 				Memory:  "512Mi",
 			})
 

@@ -57,16 +57,13 @@ func (s *CockroachStatefulSet) ToUnstructured() *unstructured.Unstructured {
 										"memory": s.Memory,
 									},
 									"limits": map[string]interface{}{
-										"cpu":    s.CPU,
 										"memory": s.Memory,
 									},
 								},
-								"volumes": []map[string]interface{}{
+								"volumeMounts": []map[string]interface{}{
 									{
-										"name": "datadir",
-										"persistentVolumeClaim": map[string]interface{}{
-											"claimName": "datadir",
-										},
+										"name":      "datadir",
+										"mountPath": "/cockroach/cockroach-data",
 									},
 								},
 								"ports": []map[string]interface{}{
@@ -85,11 +82,19 @@ func (s *CockroachStatefulSet) ToUnstructured() *unstructured.Unstructured {
 									"httpGet": map[string]interface{}{
 										"path":   "/health?ready=1",
 										"port":   "http",
-										"scheme": "HTTPS",
+										"scheme": "HTTP",
 									},
 									"initialDelaySeconds": 10,
 									"periodSeconds":       5,
 									"failureThreshold":    2,
+								},
+							},
+						},
+						"volumes": []map[string]interface{}{
+							{
+								"name": "datadir",
+								"persistentVolumeClaim": map[string]interface{}{
+									"claimName": "datadir",
 								},
 							},
 						},

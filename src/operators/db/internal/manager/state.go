@@ -11,6 +11,7 @@ type state struct {
 	cmigrations bucket[crds.CockroachMigration, *crds.CockroachMigration]
 	rdbs        bucket[crds.RedisDB, *crds.RedisDB]
 	csss        bucket[resources.CockroachStatefulSet, *resources.CockroachStatefulSet]
+	cpvcs       bucket[resources.CockroachPVC, *resources.CockroachPVC]
 }
 
 func newState() state {
@@ -20,5 +21,52 @@ func newState() state {
 		cmigrations: newBucket[crds.CockroachMigration](),
 		rdbs:        newBucket[crds.RedisDB](),
 		csss:        newBucket[resources.CockroachStatefulSet](),
+		cpvcs:       newBucket[resources.CockroachPVC](),
 	}
+}
+
+type demand[T any] struct {
+	toAdd    []T
+	toRemove []T
+}
+
+func (s *state) getCSSSDemand() demand[crds.CockroachDB] {
+	toAdd := []crds.CockroachDB{}
+	toRemove := []crds.CockroachDB{}
+
+	for name, db := range s.cdbs.state {
+		if ss, ok := s.csss.state[name]; !ok {
+			toAdd = append(toAdd, db)
+		} else if db.Storage != ss.Storage {
+			toRemove = append(toRemove, db)
+			toAdd = append(toAdd, db)
+		}
+	}
+
+	for name := range s.csss.state {
+		if _, ok := s.cdbs.state[name]; !ok {
+			toRemove = append(toRemove, crds.CockroachDB{
+				Name: name,
+			})
+		}
+	}
+
+	return demand[crds.CockroachDB]{
+		toAdd:    toAdd,
+		toRemove: toRemove,
+	}
+}
+
+func (s *state) getCPVCDemand(toRemove []crds.CockroachDB) []resources.CockroachPVC {
+	pvcsToRemove := []resources.CockroachPVC{}
+
+	for _, db := range toRemove {
+		for _, pvc := range s.cpvcs.state {
+			if pvc.Database == db.Name {
+				pvcsToRemove = append(pvcsToRemove, pvc)
+			}
+		}
+	}
+
+	return pvcsToRemove
 }

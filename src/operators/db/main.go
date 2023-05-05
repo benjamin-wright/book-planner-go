@@ -45,7 +45,12 @@ func main() {
 		zap.S().Fatalf("Failed to watch cockroach stateful sets: %+v", err)
 	}
 
-	m := manager.New(cdbClient, ccClient, cmClient, rdbClient, cssClient)
+	cpvcClient, err := resources.NewCockroachPVCClient(namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to watch cockroach persistent volume claims: %+v", err)
+	}
+
+	m := manager.New(cdbClient, ccClient, cmClient, rdbClient, cssClient, cpvcClient)
 	err = m.Start(time.Second * 5)
 	if err != nil {
 		zap.S().Fatalf("Failed to start the manager: %+v", err)

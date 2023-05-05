@@ -20,6 +20,7 @@ type Manager struct {
 	cmigrations K8sClient[crds.CockroachMigration]
 	rdbs        K8sClient[crds.RedisDB]
 	csss        K8sClient[resources.CockroachStatefulSet]
+	cpvcs       K8sClient[resources.CockroachPVC]
 }
 
 type K8sClient[T any] interface {
@@ -35,6 +36,7 @@ func New(
 	cmClient K8sClient[crds.CockroachMigration],
 	rdbClient K8sClient[crds.RedisDB],
 	cssClient K8sClient[resources.CockroachStatefulSet],
+	cpvcClient K8sClient[resources.CockroachPVC],
 ) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -46,6 +48,7 @@ func New(
 		cmigrations: cmClient,
 		rdbs:        rdbClient,
 		csss:        cssClient,
+		cpvcs:       cpvcClient,
 	}
 }
 
@@ -79,6 +82,11 @@ func (m *Manager) Start(debounce time.Duration) error {
 		return fmt.Errorf("failed to watch cockroach stateful sets: %+v", err)
 	}
 
+	cpvcs, err := m.cpvcs.Watch(m.ctx, m.cancel)
+	if err != nil {
+		return fmt.Errorf("failed to watch cockroach persistent volume claims: %+v", err)
+	}
+
 	state := newState()
 	debouncer := utils.NewDebouncer(debounce)
 
@@ -105,6 +113,10 @@ func (m *Manager) Start(debounce time.Duration) error {
 				state.csss.apply(update)
 				debouncer.Trigger()
 				continue
+			case update := <-cpvcs:
+				state.cpvcs.apply(update)
+				debouncer.Trigger()
+				continue
 			case <-debouncer.Wait():
 				zap.S().Infof("Processing Started")
 				m.processCockroachDBs(&state)
@@ -121,25 +133,10 @@ func (m *Manager) Start(debounce time.Duration) error {
 }
 
 func (m *Manager) processCockroachDBs(state *state) {
-	toAdd := []crds.CockroachDB{}
-	toRemove := []crds.CockroachDB{}
+	demand := state.getCSSSDemand()
+	pvcsToRemove := state.getCPVCDemand(demand.toRemove)
 
-	for name, db := range state.cdbs.state {
-		if ss, ok := state.csss.state[name]; !ok {
-			toAdd = append(toAdd, db)
-		} else if db.Storage != ss.Storage {
-			toRemove = append(toRemove, db)
-		}
-	}
-
-	for name, _ := range state.csss.state {
-		if db, ok := state.cdbs.state[name]; !ok {
-			toRemove = append(toRemove, db)
-		}
-	}
-
-	for _, db := range toRemove {
-		toRemove = append(toRemove, db)
+	for _, db := range demand.toRemove {
 		zap.S().Infof("Deleting db: %s", db.Name)
 		err := m.csss.Delete(m.ctx, db.Name)
 
@@ -148,7 +145,16 @@ func (m *Manager) processCockroachDBs(state *state) {
 		}
 	}
 
-	for _, db := range toAdd {
+	for _, pvc := range pvcsToRemove {
+		zap.S().Infof("Deleting pvc: %s", pvc.Name)
+		err := m.cpvcs.Delete(m.ctx, pvc.Name)
+
+		if err != nil {
+			zap.S().Errorf("Failed to delete cockroachdb PVC: %+v", err)
+		}
+	}
+
+	for _, db := range demand.toAdd {
 		zap.S().Infof("Creating db: %s", db.Name)
 		err := m.csss.Create(m.ctx, resources.CockroachStatefulSet{
 			Name:    db.Name,
@@ -164,5 +170,4 @@ func (m *Manager) processCockroachDBs(state *state) {
 }
 
 func (m *Manager) processCockroachClients(state *state) {
-
 }

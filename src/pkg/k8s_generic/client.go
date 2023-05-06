@@ -17,20 +17,20 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type Resource[T any] interface {
+type Resource[T comparable] interface {
 	*T
 	GetName() string
 	ToUnstructured() *unstructured.Unstructured
 	FromUnstructured(obj *unstructured.Unstructured) error
 }
 
-type Client[T any, PT Resource[T]] struct {
+type Client[T comparable, PT Resource[T]] struct {
 	client    dynamic.Interface
 	namespace string
 	schema    schema.GroupVersionResource
 }
 
-func New[T any, PT Resource[T]](schema schema.GroupVersionResource, namespace string) (*Client[T, PT], error) {
+func New[T comparable, PT Resource[T]](schema schema.GroupVersionResource, namespace string) (*Client[T, PT], error) {
 	kubeconfig := os.Getenv("KUBECONFIG")
 	var config *rest.Config
 	var err error
@@ -99,7 +99,7 @@ func (c *Client[T, PT]) Update(ctx context.Context, resource T) error {
 	return nil
 }
 
-type Update[T any] struct {
+type Update[T comparable] struct {
 	ToAdd    []T
 	ToRemove []T
 }
@@ -132,9 +132,11 @@ func (c *Client[T, PT]) Watch(ctx context.Context, cancel context.CancelFunc) (<
 			oldRes := convert(oldObj)
 			newRes := convert(newObj)
 
-			output <- Update[T]{
-				ToAdd:    []T{newRes},
-				ToRemove: []T{oldRes},
+			if oldRes != newRes {
+				output <- Update[T]{
+					ToAdd:    []T{newRes},
+					ToRemove: []T{oldRes},
+				}
 			}
 		},
 		DeleteFunc: func(obj interface{}) {

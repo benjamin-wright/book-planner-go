@@ -50,16 +50,20 @@ func main() {
 		zap.S().Fatalf("Failed to watch cockroach persistent volume claims: %+v", err)
 	}
 
-	m := manager.New(cdbClient, ccClient, cmClient, rdbClient, cssClient, cpvcClient)
-	err = m.Start(time.Second * 5)
+	csvcClient, err := resources.NewCockroachServiceClient(namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to watch cockroach services: %+v", err)
+	}
+
+	m, err := manager.New(namespace, cdbClient, ccClient, cmClient, rdbClient, cssClient, cpvcClient, csvcClient, time.Second*5)
 	if err != nil {
 		zap.S().Fatalf("Failed to start the manager: %+v", err)
 	}
 
+	m.Start()
 	zap.S().Info("Running!")
 
-	// Wait for interrupt signal to gracefully shutdown the server with
-	// a timeout of 5 seconds.
+	// Wait for interrupt signal to gracefully shutdown the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit

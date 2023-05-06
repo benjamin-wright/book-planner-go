@@ -1,4 +1,4 @@
-package connect
+package postgres
 
 import (
 	"context"
@@ -81,25 +81,27 @@ func (d *AdminConn) DropUser(username string) error {
 	return nil
 }
 
-func (d *AdminConn) CreateDatabase(database string) error {
+func (d *AdminConn) ListDatabases() ([]string, error) {
 	rows, err := d.conn.Query(context.Background(), "SELECT datname FROM pg_database")
 	if err != nil {
-		return fmt.Errorf("failed to fetch existing database: %+v", err)
+		return nil, fmt.Errorf("failed to fetch existing databases: %+v", err)
 	}
 	defer rows.Close()
 
+	databases := []string{}
 	for rows.Next() {
 		var existing string
 		if err := rows.Scan(&existing); err != nil {
-			return fmt.Errorf("failed to decode existing database: %+v", err)
+			return nil, fmt.Errorf("failed to decode existing database: %+v", err)
 		}
 
-		if existing == database {
-			zap.S().Infof("Database %s already exists", database)
-			return nil
-		}
+		databases = append(databases, existing)
 	}
 
+	return databases, nil
+}
+
+func (d *AdminConn) CreateDatabase(database string) error {
 	zap.S().Infof("Creating database %s", database)
 	if _, err := d.conn.Exec(context.Background(), fmt.Sprintf("CREATE DATABASE %s", database)); err != nil {
 		return fmt.Errorf("failed to create database: %+v", err)
@@ -109,31 +111,11 @@ func (d *AdminConn) CreateDatabase(database string) error {
 }
 
 func (d *AdminConn) DropDatabase(database string) error {
-	rows, err := d.conn.Query(context.Background(), "SELECT datname FROM pg_database")
-	if err != nil {
-		return fmt.Errorf("failed to fetch existing database: %+v", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var existing string
-		if err := rows.Scan(&existing); err != nil {
-			return fmt.Errorf("failed to decode existing database: %+v", err)
-		}
-
-		if existing == database {
-			rows.Close()
-
-			zap.S().Infof("Dropping database %s", database)
-			if _, err := d.conn.Exec(context.Background(), fmt.Sprintf("DROP DATABASE %s", database)); err != nil {
-				return fmt.Errorf("failed to drop database: %+v", err)
-			}
-
-			return nil
-		}
+	zap.S().Infof("Dropping database %s", database)
+	if _, err := d.conn.Exec(context.Background(), fmt.Sprintf("DROP DATABASE %s", database)); err != nil {
+		return fmt.Errorf("failed to drop database: %+v", err)
 	}
 
-	zap.S().Infof("Database %s didn't exist", database)
 	return nil
 }
 

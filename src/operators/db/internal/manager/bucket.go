@@ -5,16 +5,16 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type Nameable[T any] interface {
+type Nameable[T comparable] interface {
 	*T
 	GetName() string
 }
 
-type bucket[T any, PT Nameable[T]] struct {
+type bucket[T comparable, PT Nameable[T]] struct {
 	state map[string]T
 }
 
-func newBucket[T any, PT Nameable[T]]() bucket[T, PT] {
+func newBucket[T comparable, PT Nameable[T]]() bucket[T, PT] {
 	return bucket[T, PT]{
 		state: map[string]T{},
 	}
@@ -44,4 +44,8 @@ func (b *bucket[T, PT]) remove(obj T) {
 	key := ptr.GetName()
 
 	delete(b.state, key)
+}
+
+func (b *bucket[T, PT]) clear() {
+	b.state = map[string]T{}
 }

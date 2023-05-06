@@ -12,8 +12,6 @@ import (
 type CockroachStatefulSet struct {
 	Name    string
 	Storage string
-	CPU     string
-	Memory  string
 	Ready   bool
 }
 
@@ -54,11 +52,11 @@ func (s *CockroachStatefulSet) ToUnstructured() *unstructured.Unstructured {
 								},
 								"resources": map[string]interface{}{
 									"requests": map[string]interface{}{
-										"cpu":    s.CPU,
-										"memory": s.Memory,
+										"cpu":    "0.1",
+										"memory": "512Mi",
 									},
 									"limits": map[string]interface{}{
-										"memory": s.Memory,
+										"memory": "512Mi",
 									},
 								},
 								"volumeMounts": []map[string]interface{}{
@@ -132,14 +130,6 @@ func (s *CockroachStatefulSet) FromUnstructured(obj *unstructured.Unstructured) 
 	s.Storage, err = utils.GetProperty[string](obj, "spec", "volumeClaimTemplates", "0", "spec", "resources", "requests", "storage")
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %+v", err)
-	}
-	s.CPU, err = utils.GetProperty[string](obj, "spec", "template", "spec", "containers", "0", "resources", "requests", "cpu")
-	if err != nil {
-		return fmt.Errorf("failed to get cpu: %+v", err)
-	}
-	s.Memory, err = utils.GetProperty[string](obj, "spec", "template", "spec", "containers", "0", "resources", "requests", "memory")
-	if err != nil {
-		return fmt.Errorf("failed to get memory: %+v", err)
 	}
 
 	replicas, err := utils.GetProperty[int64](obj, "status", "replicas")

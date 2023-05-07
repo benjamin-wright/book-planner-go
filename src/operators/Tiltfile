@@ -42,3 +42,9 @@ def operator(name):
             'image=%s' % name
         ]
     ))
+
+    k8s_resource(
+        name,
+        auto_init = True,
+        trigger_mode = TRIGGER_MODE_MANUAL
+    )

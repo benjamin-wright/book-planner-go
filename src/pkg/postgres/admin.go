@@ -25,25 +25,28 @@ func (d *AdminConn) Stop() {
 	d.conn.Close(context.Background())
 }
 
-func (d *AdminConn) CreateUser(username string) error {
+func (d *AdminConn) ListUsers() ([]string, error) {
 	rows, err := d.conn.Query(context.Background(), "SHOW USERS")
 	if err != nil {
-		return fmt.Errorf("failed to fetch existing user: %+v", err)
+		return nil, fmt.Errorf("failed to list users: %+v", err)
 	}
 	defer rows.Close()
 
+	users := []string{}
+
 	for rows.Next() {
-		var existing string
-		if err := rows.Scan(&existing, nil, nil); err != nil {
-			return fmt.Errorf("failed to decode existing database user: %+v", err)
+		var user string
+		if err := rows.Scan(&user, nil, nil); err != nil {
+			return nil, fmt.Errorf("failed to decode database user: %+v", err)
 		}
 
-		if existing == username {
-			zap.S().Infof("User %s already exists", username)
-			return nil
-		}
+		users = append(users, user)
 	}
 
+	return users, nil
+}
+
+func (d *AdminConn) CreateUser(username string) error {
 	zap.S().Infof("Creating user %s", username)
 	if _, err := d.conn.Exec(context.Background(), "CREATE USER $1", username); err != nil {
 		return fmt.Errorf("failed to create database user: %+v", err)
@@ -53,57 +56,41 @@ func (d *AdminConn) CreateUser(username string) error {
 }
 
 func (d *AdminConn) DropUser(username string) error {
-	rows, err := d.conn.Query(context.Background(), "SHOW USERS")
-	if err != nil {
-		return fmt.Errorf("failed to fetch existing database user: %+v", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var existing string
-		if err := rows.Scan(&existing, nil, nil); err != nil {
-			return fmt.Errorf("failed to decode existing database user: %+v", err)
-		}
-
-		if existing == username {
-			rows.Close()
-
-			zap.S().Infof("Deleting user %s", username)
-			if _, err := d.conn.Exec(context.Background(), "DROP USER $1", username); err != nil {
-				return fmt.Errorf("failed to drop database user: %+v", err)
-			}
-
-			return nil
-		}
+	zap.S().Infof("Deleting user %s", username)
+	if _, err := d.conn.Exec(context.Background(), "DROP USER $1", username); err != nil {
+		return fmt.Errorf("failed to drop database user: %+v", err)
 	}
 
-	zap.S().Infof("User %s doesn't exist", username)
 	return nil
 }
 
 func (d *AdminConn) ListDatabases() ([]string, error) {
-	rows, err := d.conn.Query(context.Background(), "SELECT datname FROM pg_database")
+	rows, err := d.conn.Query(context.Background(), "SHOW DATABASES")
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch existing databases: %+v", err)
+		return nil, fmt.Errorf("failed to list databases: %+v", err)
 	}
 	defer rows.Close()
 
 	databases := []string{}
 	for rows.Next() {
-		var existing string
-		if err := rows.Scan(&existing); err != nil {
-			return nil, fmt.Errorf("failed to decode existing database: %+v", err)
+		var name string
+		if err := rows.Scan(&name, nil); err != nil {
+			return nil, fmt.Errorf("failed to decode database: %+v", err)
 		}
 
-		databases = append(databases, existing)
+		databases = append(databases, name)
 	}
 
 	return databases, nil
 }
 
+func sanitize(name string) string {
+	return pgx.Identifier.Sanitize([]string{name})
+}
+
 func (d *AdminConn) CreateDatabase(database string) error {
 	zap.S().Infof("Creating database %s", database)
-	if _, err := d.conn.Exec(context.Background(), fmt.Sprintf("CREATE DATABASE %s", database)); err != nil {
+	if _, err := d.conn.Exec(context.Background(), "CREATE DATABASE "+sanitize(database)); err != nil {
 		return fmt.Errorf("failed to create database: %+v", err)
 	}
 
@@ -112,15 +99,44 @@ func (d *AdminConn) CreateDatabase(database string) error {
 
 func (d *AdminConn) DropDatabase(database string) error {
 	zap.S().Infof("Dropping database %s", database)
-	if _, err := d.conn.Exec(context.Background(), fmt.Sprintf("DROP DATABASE %s", database)); err != nil {
+	if _, err := d.conn.Exec(context.Background(), "DROP DATABASE "+sanitize(database)); err != nil {
 		return fmt.Errorf("failed to drop database: %+v", err)
 	}
 
 	return nil
 }
 
+func (d *AdminConn) ListPermitted(database string) ([]string, error) {
+	rows, err := d.conn.Query(context.Background(), "SHOW GRANTS ON DATABASE "+sanitize(database))
+	if err != nil {
+		return nil, fmt.Errorf("failed to list permissions: %+v", err)
+	}
+	defer rows.Close()
+
+	permittedMap := map[string]struct{}{}
+
+	for rows.Next() {
+		var user string
+		var privilege_type string
+		if err := rows.Scan(nil, nil, &user, &privilege_type); err != nil {
+			return nil, fmt.Errorf("failed to decode user permission: %+v", err)
+		}
+
+		if privilege_type == "ALL" {
+			permittedMap[user] = struct{}{}
+		}
+	}
+
+	permitted := make([]string, len(permittedMap))
+	for user := range permittedMap {
+		permitted = append(permitted, user)
+	}
+
+	return permitted, nil
+}
+
 func (d *AdminConn) GrantPermissions(username string, database string) error {
-	query := fmt.Sprintf("GRANT ALL ON DATABASE %s TO %s", database, username)
+	query := fmt.Sprintf("GRANT ALL ON DATABASE %s TO %s", sanitize(database), sanitize(username))
 	if _, err := d.conn.Exec(context.Background(), query); err != nil {
 		return fmt.Errorf("failed to grant permissions: %+v", err)
 	}
@@ -131,31 +147,12 @@ func (d *AdminConn) GrantPermissions(username string, database string) error {
 }
 
 func (d *AdminConn) RevokePermissions(username string, database string) error {
-	rows, err := d.conn.Query(context.Background(), "SHOW USERS")
-	if err != nil {
-		return fmt.Errorf("failed to fetch existing users: %+v", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var existing string
-		if err := rows.Scan(&existing, nil, nil); err != nil {
-			return fmt.Errorf("failed to decode existing user: %+v", err)
-		}
-
-		if existing == username {
-			rows.Close()
-
-			query := fmt.Sprintf("REVOKE ALL ON DATABASE %s FROM %s", database, username)
-			if _, err := d.conn.Exec(context.Background(), query); err != nil {
-				return fmt.Errorf("failed to revoke permissions: %+v", err)
-			}
-
-			zap.S().Infof("Revoked '%s' permission to read/write from '%s'", username, database)
-			return nil
-		}
+	query := fmt.Sprintf("REVOKE ALL ON DATABASE %s FROM %s", sanitize(database), sanitize(username))
+	if _, err := d.conn.Exec(context.Background(), query); err != nil {
+		return fmt.Errorf("failed to revoke permissions: %+v", err)
 	}
 
-	zap.S().Infof("User '%s' doesn't exist", username)
+	zap.S().Infof("Revoked '%s' permission to read/write from '%s'", username, database)
+
 	return nil
 }

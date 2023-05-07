@@ -186,6 +186,8 @@ func (m *Manager) refresh() {
 
 func (m *Manager) refreshDBs() {
 	m.state.cdatabases.clear()
+	m.state.cusers.clear()
+	m.state.cpermissions.clear()
 
 	for db := range m.state.cdbs.state {
 		ss, hasSS := m.state.csss.state[db]
@@ -198,18 +200,35 @@ func (m *Manager) refreshDBs() {
 		if err != nil {
 			zap.S().Errorf("Failed to create client for database %s: %+v", db, err)
 		}
+		defer cli.Stop()
+
+		users, err := cli.ListUsers()
+		if err != nil {
+			zap.S().Errorf("Failed to list users in %s: %+v", db, err)
+		}
+
+		for _, user := range users {
+			m.state.cusers.add(user)
+		}
 
 		names, err := cli.ListDBs()
 		if err != nil {
 			zap.S().Errorf("Failed to list databases in %s: %+v", db, err)
 		}
 
-		for _, name := range names {
-			m.state.cdatabases.add(cockroach.Database{
-				Name: name,
-				DB:   db,
-			})
+		for _, db := range names {
+			m.state.cdatabases.add(db)
+
+			permissions, err := cli.ListPermitted(db)
+			if err != nil {
+				zap.S().Errorf("Failed to list permissions in %s: %+v", db.Name, err)
+			}
+
+			for _, p := range permissions {
+				m.state.cpermissions.add(p)
+			}
 		}
+
 	}
 }
 
@@ -265,34 +284,108 @@ func (m *Manager) processCockroachDBs() {
 }
 
 func (m *Manager) processCockroachClients() {
-	demand := m.state.getCDBDemand()
+	dbDemand := m.state.getCDBDemand()
+	userDemand := m.state.getCUserDemand()
+	permsDemand := m.state.getCPermissionDemand()
 
 	dbs := map[string]struct{}{}
-	for _, db := range demand.toAdd {
+	for _, db := range dbDemand.toAdd {
 		dbs[db.DB] = struct{}{}
 	}
-	for _, db := range demand.toRemove {
+	for _, db := range dbDemand.toRemove {
 		dbs[db.DB] = struct{}{}
+	}
+	for _, user := range userDemand.toAdd {
+		dbs[user.DB] = struct{}{}
+	}
+	for _, user := range userDemand.toRemove {
+		dbs[user.DB] = struct{}{}
+	}
+	for _, perm := range permsDemand.toAdd {
+		dbs[perm.DB] = struct{}{}
+	}
+	for _, perm := range permsDemand.toRemove {
+		dbs[perm.DB] = struct{}{}
 	}
 
-	for db := range dbs {
-		cli, err := cockroach.New(db, m.namespace)
+	for database := range dbs {
+		cli, err := cockroach.New(database, m.namespace)
 		if err != nil {
-			zap.S().Errorf("Failed to create database client for %s: %+v", db, err)
+			zap.S().Errorf("Failed to create database client for %s: %+v", database, err)
 		}
 
-		for _, db := range demand.toAdd {
+		for _, perm := range permsDemand.toRemove {
+			if perm.DB != database {
+				continue
+			}
+
+			zap.S().Infof("Dropping permission for user %s in database %s of db %s", perm.User, perm.Database, perm.DB)
+			err = cli.RevokePermission(perm)
+			if err != nil {
+				zap.S().Errorf("Failed to revoke permission: %+v", err)
+			}
+		}
+
+		for _, db := range dbDemand.toRemove {
+			if db.DB != database {
+				continue
+			}
+
+			zap.S().Infof("Dropping database %s in db %s", db.Name, db.DB)
+			err = cli.DeleteDB(db)
+			if err != nil {
+				zap.S().Errorf("Failed to delete database: %+v", err)
+			}
+		}
+
+		for _, user := range userDemand.toRemove {
+			if user.DB != database {
+				continue
+			}
+
+			zap.S().Infof("Dropping user %s in db %s", user.Name, user.DB)
+			err = cli.DeleteUser(user)
+			if err != nil {
+				zap.S().Errorf("Failed to delete user: %+v", err)
+			}
+		}
+
+		for _, db := range dbDemand.toAdd {
+			if db.DB != database {
+				continue
+			}
+
 			zap.S().Infof("Creating database %s in db %s", db.Name, db.DB)
 
-			err := cli.CreateDB(db.Name)
+			err := cli.CreateDB(db)
 			if err != nil {
 				zap.S().Errorf("Failed to create database: %+v", err)
 			}
 		}
 
-		for _, db := range demand.toRemove {
-			zap.S().Infof("Dropping database %s in db %s", db.Name, db.DB)
+		for _, user := range userDemand.toAdd {
+			if user.DB != database {
+				continue
+			}
+
+			zap.S().Infof("Creating user %s in db %s", user.Name, user.DB)
+
+			err := cli.CreateUser(user)
+			if err != nil {
+				zap.S().Errorf("Failed to create user: %+v", err)
+			}
+		}
+
+		for _, perm := range permsDemand.toAdd {
+			if perm.DB != database {
+				continue
+			}
+
+			zap.S().Infof("Adding permission for user %s in database %s of db %s", perm.User, perm.Database, perm.DB)
+			err := cli.GrantPermission(perm)
+			if err != nil {
+				zap.S().Errorf("Failed to grant permission: %+v", err)
+			}
 		}
 	}
-
 }

@@ -1,32 +1,37 @@
 package manager
 
 import (
+	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/cockroach"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/crds"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/resources"
 )
 
 type state struct {
-	cdbs        bucket[crds.CockroachDB, *crds.CockroachDB]
-	cclients    bucket[crds.CockroachClient, *crds.CockroachClient]
-	cmigrations bucket[crds.CockroachMigration, *crds.CockroachMigration]
-	rdbs        bucket[crds.RedisDB, *crds.RedisDB]
-	csss        bucket[resources.CockroachStatefulSet, *resources.CockroachStatefulSet]
-	cpvcs       bucket[resources.CockroachPVC, *resources.CockroachPVC]
-	csvcs       bucket[resources.CockroachService, *resources.CockroachService]
-	cdatabases  bucket[cockroach.Database, *cockroach.Database]
+	cdbs         bucket[crds.CockroachDB, *crds.CockroachDB]
+	cclients     bucket[crds.CockroachClient, *crds.CockroachClient]
+	cmigrations  bucket[crds.CockroachMigration, *crds.CockroachMigration]
+	rdbs         bucket[crds.RedisDB, *crds.RedisDB]
+	csss         bucket[resources.CockroachStatefulSet, *resources.CockroachStatefulSet]
+	cpvcs        bucket[resources.CockroachPVC, *resources.CockroachPVC]
+	csvcs        bucket[resources.CockroachService, *resources.CockroachService]
+	cdatabases   bucket[cockroach.Database, *cockroach.Database]
+	cusers       bucket[cockroach.User, *cockroach.User]
+	cpermissions bucket[cockroach.Permission, *cockroach.Permission]
 }
 
 func newState() state {
 	return state{
-		cdbs:        newBucket[crds.CockroachDB](),
-		cclients:    newBucket[crds.CockroachClient](),
-		cmigrations: newBucket[crds.CockroachMigration](),
-		rdbs:        newBucket[crds.RedisDB](),
-		csss:        newBucket[resources.CockroachStatefulSet](),
-		cpvcs:       newBucket[resources.CockroachPVC](),
-		csvcs:       newBucket[resources.CockroachService](),
-		cdatabases:  newBucket[cockroach.Database](),
+		cdbs:         newBucket[crds.CockroachDB](),
+		cclients:     newBucket[crds.CockroachClient](),
+		cmigrations:  newBucket[crds.CockroachMigration](),
+		rdbs:         newBucket[crds.RedisDB](),
+		csss:         newBucket[resources.CockroachStatefulSet](),
+		cpvcs:        newBucket[resources.CockroachPVC](),
+		csvcs:        newBucket[resources.CockroachService](),
+		cdatabases:   newBucket[cockroach.Database](),
+		cusers:       newBucket[cockroach.User](),
+		cpermissions: newBucket[cockroach.Permission](),
 	}
 }
 
@@ -138,6 +143,80 @@ func (s *state) getCDBDemand() demand[cockroach.Database] {
 	}
 
 	for current, db := range s.cdatabases.state {
+		if _, ok := seen[current]; !ok {
+			d.toRemove = append(d.toRemove, db)
+		}
+	}
+
+	return d
+}
+
+func (s *state) getCUserDemand() demand[cockroach.User] {
+	d := demand[cockroach.User]{
+		toAdd:    []cockroach.User{},
+		toRemove: []cockroach.User{},
+	}
+
+	seen := map[string]cockroach.User{}
+
+	for _, client := range s.cclients.state {
+		ss, hasSS := s.csss.state[client.Deployment]
+		_, hasSvc := s.csvcs.state[client.Deployment]
+
+		if !hasSS || !hasSvc || !ss.Ready {
+			continue
+		}
+
+		desired := cockroach.User{
+			Name: client.Username,
+			DB:   client.Deployment,
+		}
+		seen[desired.GetName()] = desired
+
+		if _, ok := s.cusers.state[desired.GetName()]; !ok {
+			d.toAdd = append(d.toAdd, desired)
+		}
+	}
+
+	for current, db := range s.cusers.state {
+		if _, ok := seen[current]; !ok {
+			d.toRemove = append(d.toRemove, db)
+		}
+	}
+
+	return d
+}
+
+func (s *state) getCPermissionDemand() demand[cockroach.Permission] {
+	d := demand[cockroach.Permission]{
+		toAdd:    []cockroach.Permission{},
+		toRemove: []cockroach.Permission{},
+	}
+
+	seen := map[string]cockroach.Permission{}
+
+	for _, client := range s.cclients.state {
+		ss, hasSS := s.csss.state[client.Deployment]
+		_, hasSvc := s.csvcs.state[client.Deployment]
+
+		if !hasSS || !hasSvc || !ss.Ready {
+			continue
+		}
+
+		desired := cockroach.Permission{
+			User:     client.Username,
+			Database: client.Database,
+			DB:       client.Deployment,
+		}
+		seen[desired.GetName()] = desired
+
+		if _, ok := s.cpermissions.state[desired.GetName()]; !ok {
+			zap.S().Infof("Adding %s", desired.GetName())
+			d.toAdd = append(d.toAdd, desired)
+		}
+	}
+
+	for current, db := range s.cpermissions.state {
 		if _, ok := seen[current]; !ok {
 			d.toRemove = append(d.toRemove, db)
 		}

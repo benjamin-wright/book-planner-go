@@ -53,8 +53,8 @@ func TestSomethingIntegration(t *testing.T) {
 	}
 
 	err = cdbs.Create(context.Background(), crds.CockroachDB{
-		Name:    "other-db",
-		Storage: "512Mi",
+		Name:    "testy-db",
+		Storage: "256Mi",
 	})
 	if err != nil {
 		t.Logf("failed to create test db: %+v", err)
@@ -62,8 +62,8 @@ func TestSomethingIntegration(t *testing.T) {
 	}
 
 	err = cclients.Create(context.Background(), crds.CockroachClient{
-		Deployment: "other-db",
-		Database:   "my_db",
+		Deployment: "testy-db",
+		Database:   "new_db",
 		Name:       "my-client",
 		Username:   "my_user",
 		Secret:     "my-secret",

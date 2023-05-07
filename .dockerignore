@@ -1,0 +1,6 @@
+chart/**
+.git
+.scratch
+docker
+tilt_modules
+dist

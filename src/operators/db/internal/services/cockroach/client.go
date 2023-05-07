@@ -3,6 +3,7 @@ package cockroach
 import (
 	"fmt"
 
+	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/pkg/postgres"
 )
 
@@ -30,6 +31,7 @@ func New(database string, namespace string) (*Client, error) {
 }
 
 func (c *Client) Stop() {
+	zap.S().Infof("Closing connection to DB %s", c.database)
 	c.conn.Stop()
 }
 

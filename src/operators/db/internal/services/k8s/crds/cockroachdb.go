@@ -5,7 +5,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/utils"
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
@@ -34,7 +33,7 @@ func (db *CockroachDB) FromUnstructured(obj *unstructured.Unstructured) error {
 	var err error
 
 	db.Name = obj.GetName()
-	db.Storage, err = utils.GetProperty[string](obj, "spec", "storage")
+	db.Storage, err = k8s_generic.GetProperty[string](obj, "spec", "storage")
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %+v", err)
 	}
@@ -53,5 +52,5 @@ var CockroachDBSchema = schema.GroupVersionResource{
 }
 
 func NewCockroachDBClient(namespace string) (*k8s_generic.Client[CockroachDB, *CockroachDB], error) {
-	return k8s_generic.New[CockroachDB](CockroachDBSchema, namespace)
+	return k8s_generic.New[CockroachDB](CockroachDBSchema, namespace, nil)
 }

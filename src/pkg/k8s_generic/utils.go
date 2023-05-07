@@ -1,4 +1,4 @@
-package utils
+package k8s_generic
 
 import (
 	"encoding/base64"
@@ -62,4 +62,16 @@ func GetProperty[T BasicType](u *unstructured.Unstructured, args ...string) (T, 
 	}
 
 	return value, nil
+}
+
+func Merge(maps ...map[string]interface{}) map[string]interface{} {
+	output := map[string]interface{}{}
+
+	for _, m := range maps {
+		for key, value := range m {
+			output[key] = value
+		}
+	}
+
+	return output
 }

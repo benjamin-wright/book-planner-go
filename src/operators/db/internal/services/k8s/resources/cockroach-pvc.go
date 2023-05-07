@@ -5,7 +5,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/utils"
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
@@ -27,12 +26,12 @@ func (p *CockroachPVC) FromUnstructured(obj *unstructured.Unstructured) error {
 	var err error
 
 	p.Name = obj.GetName()
-	p.Storage, err = utils.GetProperty[string](obj, "spec", "resources", "requests", "storage")
+	p.Storage, err = k8s_generic.GetProperty[string](obj, "spec", "resources", "requests", "storage")
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %+v", err)
 	}
 
-	p.Database, err = utils.GetProperty[string](obj, "metadata", "labels", "app")
+	p.Database, err = k8s_generic.GetProperty[string](obj, "metadata", "labels", "app")
 	if err != nil {
 		return fmt.Errorf("failed to get database from app label: %+v", err)
 	}
@@ -51,5 +50,5 @@ var CockroachPVCSchema = schema.GroupVersionResource{
 }
 
 func NewCockroachPVCClient(namespace string) (*k8s_generic.Client[CockroachPVC, *CockroachPVC], error) {
-	return k8s_generic.New[CockroachPVC](CockroachPVCSchema, namespace)
+	return k8s_generic.New[CockroachPVC](CockroachPVCSchema, namespace, LABEL_FILTERS)
 }

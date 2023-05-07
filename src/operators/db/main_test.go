@@ -53,7 +53,7 @@ func TestSomethingIntegration(t *testing.T) {
 	}
 
 	err = cdbs.Create(context.Background(), crds.CockroachDB{
-		Name:    "testy-db",
+		Name:    "random-db",
 		Storage: "256Mi",
 	})
 	if err != nil {
@@ -62,7 +62,7 @@ func TestSomethingIntegration(t *testing.T) {
 	}
 
 	err = cclients.Create(context.Background(), crds.CockroachClient{
-		Deployment: "testy-db",
+		Deployment: "random-db",
 		Database:   "new_db",
 		Name:       "my-client",
 		Username:   "my_user",

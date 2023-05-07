@@ -335,6 +335,7 @@ func (m *Manager) processCockroachClients() {
 		if err != nil {
 			zap.S().Errorf("Failed to create database client for %s: %+v", database, err)
 		}
+		defer cli.Stop()
 
 		for _, perm := range permsDemand.toRemove {
 			if perm.DB != database {

@@ -5,7 +5,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/utils"
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
@@ -40,19 +39,19 @@ func (m *CockroachMigration) FromUnstructured(obj *unstructured.Unstructured) er
 	var err error
 
 	m.Name = obj.GetName()
-	m.Deployment, err = utils.GetProperty[string](obj, "spec", "deployment")
+	m.Deployment, err = k8s_generic.GetProperty[string](obj, "spec", "deployment")
 	if err != nil {
 		return fmt.Errorf("failed to get deployment: %+v", err)
 	}
-	m.Database, err = utils.GetProperty[string](obj, "spec", "database")
+	m.Database, err = k8s_generic.GetProperty[string](obj, "spec", "database")
 	if err != nil {
 		return fmt.Errorf("failed to get database: %+v", err)
 	}
-	m.Migration, err = utils.GetProperty[string](obj, "spec", "migration")
+	m.Migration, err = k8s_generic.GetProperty[string](obj, "spec", "migration")
 	if err != nil {
 		return fmt.Errorf("failed to get migration: %+v", err)
 	}
-	m.Index, err = utils.GetProperty[int64](obj, "spec", "index")
+	m.Index, err = k8s_generic.GetProperty[int64](obj, "spec", "index")
 	if err != nil {
 		return fmt.Errorf("failed to get index: %+v", err)
 	}
@@ -71,5 +70,5 @@ var CockroachMigrationSchema = schema.GroupVersionResource{
 }
 
 func NewCockroachMigrationClient(namespace string) (*k8s_generic.Client[CockroachMigration, *CockroachMigration], error) {
-	return k8s_generic.New[CockroachMigration](CockroachMigrationSchema, namespace)
+	return k8s_generic.New[CockroachMigration](CockroachMigrationSchema, namespace, nil)
 }

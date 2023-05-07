@@ -7,7 +7,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/utils"
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
@@ -31,9 +30,9 @@ func (s *CockroachSecret) ToUnstructured(namespace string) *unstructured.Unstruc
 			"kind":       "Secret",
 			"metadata": map[string]interface{}{
 				"name": s.Name,
-				"labels": map[string]interface{}{
+				"labels": k8s_generic.Merge(map[string]interface{}{
 					"app": s.Name,
-				},
+				}, LABEL_FILTERS),
 			},
 			"data": map[string]interface{}{
 				"POSTGRES_HOST": encode("%s.%s.svc.cluster.local", s.DB, namespace),
@@ -50,18 +49,18 @@ func (s *CockroachSecret) ToUnstructured(namespace string) *unstructured.Unstruc
 func (s *CockroachSecret) FromUnstructured(obj *unstructured.Unstructured) error {
 	s.Name = obj.GetName()
 
-	hostname, err := utils.GetEncodedProperty(obj, "data", "POSTGRES_HOST")
+	hostname, err := k8s_generic.GetEncodedProperty(obj, "data", "POSTGRES_HOST")
 	if err != nil {
 		return fmt.Errorf("failed to get POSTGRES_HOST: %+v", err)
 	}
 	s.DB = strings.Split(hostname, ".")[0]
 
-	s.User, err = utils.GetEncodedProperty(obj, "data", "POSTGRES_USER")
+	s.User, err = k8s_generic.GetEncodedProperty(obj, "data", "POSTGRES_USER")
 	if err != nil {
 		return fmt.Errorf("failed to get POSTGRES_USER: %+v", err)
 	}
 
-	s.Database, err = utils.GetEncodedProperty(obj, "data", "POSTGRES_NAME")
+	s.Database, err = k8s_generic.GetEncodedProperty(obj, "data", "POSTGRES_NAME")
 	if err != nil {
 		return fmt.Errorf("failed to get POSTGRES_NAME: %+v", err)
 	}
@@ -80,5 +79,5 @@ var CockroachSecretSchema = schema.GroupVersionResource{
 }
 
 func NewCockroachSecretClient(namespace string) (*k8s_generic.Client[CockroachSecret, *CockroachSecret], error) {
-	return k8s_generic.New[CockroachSecret](CockroachSecretSchema, namespace)
+	return k8s_generic.New[CockroachSecret](CockroachSecretSchema, namespace, LABEL_FILTERS)
 }

@@ -5,7 +5,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/utils"
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
@@ -21,7 +20,8 @@ func (s *CockroachStatefulSet) ToUnstructured(namespace string) *unstructured.Un
 			"apiVersion": "apps/v1",
 			"kind":       "StatefulSet",
 			"metadata": map[string]interface{}{
-				"name": s.Name,
+				"name":   s.Name,
+				"labels": LABEL_FILTERS,
 			},
 			"spec": map[string]interface{}{
 				"replicas": 1,
@@ -102,7 +102,8 @@ func (s *CockroachStatefulSet) ToUnstructured(namespace string) *unstructured.Un
 				"volumeClaimTemplates": []map[string]interface{}{
 					{
 						"metadata": map[string]interface{}{
-							"name": "datadir",
+							"name":   "datadir",
+							"labels": LABEL_FILTERS,
 						},
 						"spec": map[string]interface{}{
 							"accessModes": []string{
@@ -127,17 +128,17 @@ func (s *CockroachStatefulSet) FromUnstructured(obj *unstructured.Unstructured) 
 	var err error
 
 	s.Name = obj.GetName()
-	s.Storage, err = utils.GetProperty[string](obj, "spec", "volumeClaimTemplates", "0", "spec", "resources", "requests", "storage")
+	s.Storage, err = k8s_generic.GetProperty[string](obj, "spec", "volumeClaimTemplates", "0", "spec", "resources", "requests", "storage")
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %+v", err)
 	}
 
-	replicas, err := utils.GetProperty[int64](obj, "status", "replicas")
+	replicas, err := k8s_generic.GetProperty[int64](obj, "status", "replicas")
 	if err != nil {
 		return fmt.Errorf("failed to get replicas: %+v", err)
 	}
 
-	readyReplicas, err := utils.GetProperty[int64](obj, "status", "readyReplicas")
+	readyReplicas, err := k8s_generic.GetProperty[int64](obj, "status", "readyReplicas")
 	if err != nil {
 		readyReplicas = 0
 	}
@@ -158,5 +159,5 @@ var CockroachStatefulSetSchema = schema.GroupVersionResource{
 }
 
 func NewCockroachStatefulSetClient(namespace string) (*k8s_generic.Client[CockroachStatefulSet, *CockroachStatefulSet], error) {
-	return k8s_generic.New[CockroachStatefulSet](CockroachStatefulSetSchema, namespace)
+	return k8s_generic.New[CockroachStatefulSet](CockroachStatefulSetSchema, namespace, LABEL_FILTERS)
 }

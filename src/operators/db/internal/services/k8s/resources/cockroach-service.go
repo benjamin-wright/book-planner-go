@@ -17,9 +17,9 @@ func (s *CockroachService) ToUnstructured(namespace string) *unstructured.Unstru
 			"kind":       "Service",
 			"metadata": map[string]interface{}{
 				"name": s.Name,
-				"labels": map[string]interface{}{
+				"labels": k8s_generic.Merge(map[string]interface{}{
 					"app": s.Name,
-				},
+				}, LABEL_FILTERS),
 			},
 			"spec": map[string]interface{}{
 				"ports": []map[string]interface{}{
@@ -56,5 +56,5 @@ var CockroachServiceSchema = schema.GroupVersionResource{
 }
 
 func NewCockroachServiceClient(namespace string) (*k8s_generic.Client[CockroachService, *CockroachService], error) {
-	return k8s_generic.New[CockroachService](CockroachServiceSchema, namespace)
+	return k8s_generic.New[CockroachService](CockroachServiceSchema, namespace, LABEL_FILTERS)
 }

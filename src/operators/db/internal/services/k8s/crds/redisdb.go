@@ -5,7 +5,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/utils"
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
@@ -34,7 +33,7 @@ func (db *RedisDB) FromUnstructured(obj *unstructured.Unstructured) error {
 	var err error
 
 	db.Name = obj.GetName()
-	db.Storage, err = utils.GetProperty[string](obj, "spec", "storage")
+	db.Storage, err = k8s_generic.GetProperty[string](obj, "spec", "storage")
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %+v", err)
 	}
@@ -53,5 +52,5 @@ var RedisDBSchema = schema.GroupVersionResource{
 }
 
 func NewRedisDBClient(namespace string) (*k8s_generic.Client[RedisDB, *RedisDB], error) {
-	return k8s_generic.New[RedisDB](RedisDBSchema, namespace)
+	return k8s_generic.New[RedisDB](RedisDBSchema, namespace, nil)
 }

@@ -25,12 +25,13 @@ type Resource[T comparable] interface {
 }
 
 type Client[T comparable, PT Resource[T]] struct {
-	client    dynamic.Interface
-	namespace string
-	schema    schema.GroupVersionResource
+	client       dynamic.Interface
+	namespace    string
+	schema       schema.GroupVersionResource
+	labelFilters map[string]interface{}
 }
 
-func New[T comparable, PT Resource[T]](schema schema.GroupVersionResource, namespace string) (*Client[T, PT], error) {
+func New[T comparable, PT Resource[T]](schema schema.GroupVersionResource, namespace string, labelFilters map[string]interface{}) (*Client[T, PT], error) {
 	kubeconfig := os.Getenv("KUBECONFIG")
 	var config *rest.Config
 	var err error
@@ -53,9 +54,10 @@ func New[T comparable, PT Resource[T]](schema schema.GroupVersionResource, names
 	}
 
 	return &Client[T, PT]{
-		namespace: namespace,
-		schema:    schema,
-		client:    dynClient,
+		namespace:    namespace,
+		schema:       schema,
+		client:       dynClient,
+		labelFilters: labelFilters,
 	}, nil
 }
 
@@ -106,6 +108,27 @@ type Update[T comparable] struct {
 
 func (c *Client[T, PT]) Watch(ctx context.Context, cancel context.CancelFunc) (<-chan Update[T], error) {
 	output := make(chan Update[T], 1)
+	ignore := func(obj interface{}) bool {
+		if c.labelFilters == nil {
+			return false
+		}
+
+		u := obj.(*unstructured.Unstructured)
+
+		for key, value := range c.labelFilters {
+			label, err := GetProperty[string](u, "metadata", "labels", key)
+			if err != nil {
+				return true
+			}
+
+			if label != value {
+				return true
+			}
+		}
+
+		return false
+	}
+
 	convert := func(obj interface{}) T {
 		var res T
 		ptr := PT(&res)
@@ -121,6 +144,10 @@ func (c *Client[T, PT]) Watch(ctx context.Context, cancel context.CancelFunc) (<
 
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
+			if ignore(obj) {
+				return
+			}
+
 			res := convert(obj)
 
 			output <- Update[T]{
@@ -129,6 +156,10 @@ func (c *Client[T, PT]) Watch(ctx context.Context, cancel context.CancelFunc) (<
 			}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
+			if ignore(oldObj) || ignore(newObj) {
+				return
+			}
+
 			oldRes := convert(oldObj)
 			newRes := convert(newObj)
 
@@ -140,6 +171,10 @@ func (c *Client[T, PT]) Watch(ctx context.Context, cancel context.CancelFunc) (<
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
+			if ignore(obj) {
+				return
+			}
+
 			res := convert(obj)
 
 			output <- Update[T]{

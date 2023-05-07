@@ -35,11 +35,6 @@ func main() {
 		zap.S().Fatalf("Failed to get client for cockroach migrations: %+v", err)
 	}
 
-	rdbClient, err := crds.NewRedisDBClient(namespace)
-	if err != nil {
-		zap.S().Fatalf("Failed to get client for redis dbs: %+v", err)
-	}
-
 	cssClient, err := resources.NewCockroachStatefulSetClient(namespace)
 	if err != nil {
 		zap.S().Fatalf("Failed to get client for cockroach stateful sets: %+v", err)
@@ -60,7 +55,33 @@ func main() {
 		zap.S().Fatalf("Failed to get client for cockroach secrets: %+v", err)
 	}
 
-	m, err := manager.New(namespace, cdbClient, ccClient, cmClient, rdbClient, cssClient, cpvcClient, csvcClient, csecretClient, time.Second*5)
+	rdbClient, err := crds.NewRedisDBClient(namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to get client for redis dbs: %+v", err)
+	}
+
+	rssClient, err := resources.NewRedisStatefulSetClient(namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to get client for redis stateful sets: %+v", err)
+	}
+
+	rpvcClient, err := resources.NewRedisPVCClient(namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to get client for redis persistent volume claims: %+v", err)
+	}
+
+	rsvcClient, err := resources.NewRedisServiceClient(namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to get client for redis services: %+v", err)
+	}
+
+	m, err := manager.New(namespace,
+		cdbClient, ccClient, cmClient,
+		cssClient, cpvcClient, csvcClient, csecretClient,
+		rdbClient,
+		rssClient, rpvcClient, rsvcClient,
+		time.Second*5,
+	)
 	if err != nil {
 		zap.S().Fatalf("Failed to start the manager: %+v", err)
 	}

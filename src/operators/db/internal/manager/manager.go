@@ -17,22 +17,28 @@ type clients struct {
 	cdbs        K8sClient[crds.CockroachDB]
 	cclients    K8sClient[crds.CockroachClient]
 	cmigrations K8sClient[crds.CockroachMigration]
-	rdbs        K8sClient[crds.RedisDB]
 	csss        K8sClient[resources.CockroachStatefulSet]
 	cpvcs       K8sClient[resources.CockroachPVC]
 	csvcs       K8sClient[resources.CockroachService]
 	csecrets    K8sClient[resources.CockroachSecret]
+	rdbs        K8sClient[crds.RedisDB]
+	rsss        K8sClient[resources.RedisStatefulSet]
+	rpvcs       K8sClient[resources.RedisPVC]
+	rsvcs       K8sClient[resources.RedisService]
 }
 
 type streams struct {
 	cdbs        <-chan k8s_generic.Update[crds.CockroachDB]
 	cclients    <-chan k8s_generic.Update[crds.CockroachClient]
 	cmigrations <-chan k8s_generic.Update[crds.CockroachMigration]
-	rdbs        <-chan k8s_generic.Update[crds.RedisDB]
 	csss        <-chan k8s_generic.Update[resources.CockroachStatefulSet]
 	cpvcs       <-chan k8s_generic.Update[resources.CockroachPVC]
 	csvcs       <-chan k8s_generic.Update[resources.CockroachService]
 	csecrets    <-chan k8s_generic.Update[resources.CockroachSecret]
+	rdbs        <-chan k8s_generic.Update[crds.RedisDB]
+	rsss        <-chan k8s_generic.Update[resources.RedisStatefulSet]
+	rpvcs       <-chan k8s_generic.Update[resources.RedisPVC]
+	rsvcs       <-chan k8s_generic.Update[resources.RedisService]
 }
 
 type Manager struct {
@@ -61,11 +67,14 @@ func New(
 	cdbClient K8sClient[crds.CockroachDB],
 	ccClient K8sClient[crds.CockroachClient],
 	cmClient K8sClient[crds.CockroachMigration],
-	rdbClient K8sClient[crds.RedisDB],
 	cssClient K8sClient[resources.CockroachStatefulSet],
 	cpvcClient K8sClient[resources.CockroachPVC],
 	csvcClient K8sClient[resources.CockroachService],
 	csecretClient K8sClient[resources.CockroachSecret],
+	rdbClient K8sClient[crds.RedisDB],
+	rssClient K8sClient[resources.RedisStatefulSet],
+	rpvcClient K8sClient[resources.RedisPVC],
+	rsvcClient K8sClient[resources.RedisService],
 	debouncer time.Duration,
 ) (*Manager, error) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -74,11 +83,14 @@ func New(
 		cdbs:        cdbClient,
 		cclients:    ccClient,
 		cmigrations: cmClient,
-		rdbs:        rdbClient,
 		csss:        cssClient,
 		cpvcs:       cpvcClient,
 		csvcs:       csvcClient,
 		csecrets:    csecretClient,
+		rdbs:        rdbClient,
+		rsss:        rssClient,
+		rpvcs:       rpvcClient,
+		rsvcs:       rsvcClient,
 	}
 
 	cdbs, err := clients.cdbs.Watch(ctx, cancel)
@@ -94,11 +106,6 @@ func New(
 	cmigrations, err := clients.cmigrations.Watch(ctx, cancel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to watch cockroach migration: %+v", err)
-	}
-
-	rdbs, err := clients.rdbs.Watch(ctx, cancel)
-	if err != nil {
-		return nil, fmt.Errorf("failed to watch redis dbs: %+v", err)
 	}
 
 	csss, err := clients.csss.Watch(ctx, cancel)
@@ -121,15 +128,38 @@ func New(
 		return nil, fmt.Errorf("failed to watch cockroach secrets: %+v", err)
 	}
 
+	rdbs, err := clients.rdbs.Watch(ctx, cancel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to watch redis dbs: %+v", err)
+	}
+
+	rsss, err := clients.rsss.Watch(ctx, cancel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to watch redis stateful sets: %+v", err)
+	}
+
+	rpvcs, err := clients.rpvcs.Watch(ctx, cancel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to watch redis persistent volume claims: %+v", err)
+	}
+
+	rsvcs, err := clients.rsvcs.Watch(ctx, cancel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to watch redis services: %+v", err)
+	}
+
 	streams := streams{
 		cdbs:        cdbs,
 		cclients:    cclients,
 		cmigrations: cmigrations,
-		rdbs:        rdbs,
 		csss:        csss,
 		cpvcs:       cpvcs,
 		csvcs:       csvcs,
 		csecrets:    csecrets,
+		rdbs:        rdbs,
+		rsss:        rsss,
+		rpvcs:       rpvcs,
+		rsvcs:       rsvcs,
 	}
 
 	return &Manager{
@@ -187,6 +217,18 @@ func (m *Manager) refresh() {
 		m.debouncer.Trigger()
 	case update := <-m.streams.csecrets:
 		m.state.csecrets.apply(update)
+		m.debouncer.Trigger()
+	case update := <-m.streams.rdbs:
+		m.state.rdbs.apply(update)
+		m.debouncer.Trigger()
+	case update := <-m.streams.rsss:
+		m.state.rsss.apply(update)
+		m.debouncer.Trigger()
+	case update := <-m.streams.rpvcs:
+		m.state.rpvcs.apply(update)
+		m.debouncer.Trigger()
+	case update := <-m.streams.rsvcs:
+		m.state.rsvcs.apply(update)
 		m.debouncer.Trigger()
 	case <-m.debouncer.Wait():
 		zap.S().Infof("Processing Started")

@@ -6,11 +6,11 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type CockroachService struct {
+type RedisService struct {
 	Name string
 }
 
-func (s *CockroachService) ToUnstructured(namespace string) *unstructured.Unstructured {
+func (s *RedisService) ToUnstructured(namespace string) *unstructured.Unstructured {
 	statefulset := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "v1",
@@ -19,7 +19,7 @@ func (s *CockroachService) ToUnstructured(namespace string) *unstructured.Unstru
 				"name": s.Name,
 				"labels": k8s_generic.Merge(map[string]interface{}{
 					"app":                           s.Name,
-					"ponglehub.co.uk/resource-type": "cockroachdb",
+					"ponglehub.co.uk/resource-type": "redis",
 				}, LABEL_FILTERS),
 			},
 			"spec": map[string]interface{}{
@@ -41,27 +41,27 @@ func (s *CockroachService) ToUnstructured(namespace string) *unstructured.Unstru
 	return statefulset
 }
 
-func (s *CockroachService) FromUnstructured(obj *unstructured.Unstructured) error {
+func (s *RedisService) FromUnstructured(obj *unstructured.Unstructured) error {
 	s.Name = obj.GetName()
 	return nil
 }
 
-func (s *CockroachService) GetName() string {
+func (s *RedisService) GetName() string {
 	return s.Name
 }
 
-var CockroachServiceSchema = schema.GroupVersionResource{
+var RedisServiceSchema = schema.GroupVersionResource{
 	Group:    "",
 	Version:  "v1",
 	Resource: "services",
 }
 
-func NewCockroachServiceClient(namespace string) (*k8s_generic.Client[CockroachService, *CockroachService], error) {
-	return k8s_generic.New[CockroachService](
-		CockroachServiceSchema,
+func NewRedisServiceClient(namespace string) (*k8s_generic.Client[RedisService, *RedisService], error) {
+	return k8s_generic.New[RedisService](
+		RedisServiceSchema,
 		namespace,
 		k8s_generic.Merge(map[string]interface{}{
-			"ponglehub.co.uk/resource-type": "cockroachdb",
+			"ponglehub.co.uk/resource-type": "redis",
 		}, LABEL_FILTERS),
 	)
 }

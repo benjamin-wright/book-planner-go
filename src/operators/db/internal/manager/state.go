@@ -10,7 +10,6 @@ type state struct {
 	cdbs         bucket[crds.CockroachDB, *crds.CockroachDB]
 	cclients     bucket[crds.CockroachClient, *crds.CockroachClient]
 	cmigrations  bucket[crds.CockroachMigration, *crds.CockroachMigration]
-	rdbs         bucket[crds.RedisDB, *crds.RedisDB]
 	csss         bucket[resources.CockroachStatefulSet, *resources.CockroachStatefulSet]
 	cpvcs        bucket[resources.CockroachPVC, *resources.CockroachPVC]
 	csvcs        bucket[resources.CockroachService, *resources.CockroachService]
@@ -18,6 +17,10 @@ type state struct {
 	cdatabases   bucket[cockroach.Database, *cockroach.Database]
 	cusers       bucket[cockroach.User, *cockroach.User]
 	cpermissions bucket[cockroach.Permission, *cockroach.Permission]
+	rdbs         bucket[crds.RedisDB, *crds.RedisDB]
+	rsss         bucket[resources.RedisStatefulSet, *resources.RedisStatefulSet]
+	rpvcs        bucket[resources.RedisPVC, *resources.RedisPVC]
+	rsvcs        bucket[resources.RedisService, *resources.RedisService]
 }
 
 func newState() state {
@@ -25,7 +28,6 @@ func newState() state {
 		cdbs:         newBucket[crds.CockroachDB](),
 		cclients:     newBucket[crds.CockroachClient](),
 		cmigrations:  newBucket[crds.CockroachMigration](),
-		rdbs:         newBucket[crds.RedisDB](),
 		csss:         newBucket[resources.CockroachStatefulSet](),
 		cpvcs:        newBucket[resources.CockroachPVC](),
 		csvcs:        newBucket[resources.CockroachService](),
@@ -33,6 +35,10 @@ func newState() state {
 		cdatabases:   newBucket[cockroach.Database](),
 		cusers:       newBucket[cockroach.User](),
 		cpermissions: newBucket[cockroach.Permission](),
+		rdbs:         newBucket[crds.RedisDB](),
+		rsss:         newBucket[resources.RedisStatefulSet](),
+		rpvcs:        newBucket[resources.RedisPVC](),
+		rsvcs:        newBucket[resources.RedisService](),
 	}
 }
 

@@ -20,8 +20,10 @@ func (s *CockroachStatefulSet) ToUnstructured(namespace string) *unstructured.Un
 			"apiVersion": "apps/v1",
 			"kind":       "StatefulSet",
 			"metadata": map[string]interface{}{
-				"name":   s.Name,
-				"labels": LABEL_FILTERS,
+				"name": s.Name,
+				"labels": k8s_generic.Merge(map[string]interface{}{
+					"ponglehub.co.uk/resource-type": "cockroachdb",
+				}, LABEL_FILTERS),
 			},
 			"spec": map[string]interface{}{
 				"replicas": 1,
@@ -102,8 +104,10 @@ func (s *CockroachStatefulSet) ToUnstructured(namespace string) *unstructured.Un
 				"volumeClaimTemplates": []map[string]interface{}{
 					{
 						"metadata": map[string]interface{}{
-							"name":   "datadir",
-							"labels": LABEL_FILTERS,
+							"name": "datadir",
+							"labels": k8s_generic.Merge(map[string]interface{}{
+								"ponglehub.co.uk/resource-type": "cockroachdb",
+							}, LABEL_FILTERS),
 						},
 						"spec": map[string]interface{}{
 							"accessModes": []string{
@@ -159,5 +163,11 @@ var CockroachStatefulSetSchema = schema.GroupVersionResource{
 }
 
 func NewCockroachStatefulSetClient(namespace string) (*k8s_generic.Client[CockroachStatefulSet, *CockroachStatefulSet], error) {
-	return k8s_generic.New[CockroachStatefulSet](CockroachStatefulSetSchema, namespace, LABEL_FILTERS)
+	return k8s_generic.New[CockroachStatefulSet](
+		CockroachStatefulSetSchema,
+		namespace,
+		k8s_generic.Merge(map[string]interface{}{
+			"ponglehub.co.uk/resource-type": "cockroachdb",
+		}, LABEL_FILTERS),
+	)
 }

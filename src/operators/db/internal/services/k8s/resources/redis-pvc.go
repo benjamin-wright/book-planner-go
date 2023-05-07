@@ -8,13 +8,13 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type CockroachPVC struct {
+type RedisPVC struct {
 	Name     string
 	Database string
 	Storage  string
 }
 
-func (p *CockroachPVC) ToUnstructured(namespace string) *unstructured.Unstructured {
+func (p *RedisPVC) ToUnstructured(namespace string) *unstructured.Unstructured {
 	pvc := &unstructured.Unstructured{
 		Object: map[string]interface{}{},
 	}
@@ -22,7 +22,7 @@ func (p *CockroachPVC) ToUnstructured(namespace string) *unstructured.Unstructur
 	return pvc
 }
 
-func (p *CockroachPVC) FromUnstructured(obj *unstructured.Unstructured) error {
+func (p *RedisPVC) FromUnstructured(obj *unstructured.Unstructured) error {
 	var err error
 
 	p.Name = obj.GetName()
@@ -39,22 +39,22 @@ func (p *CockroachPVC) FromUnstructured(obj *unstructured.Unstructured) error {
 	return nil
 }
 
-func (db *CockroachPVC) GetName() string {
+func (db *RedisPVC) GetName() string {
 	return db.Name
 }
 
-var CockroachPVCSchema = schema.GroupVersionResource{
+var Redisema = schema.GroupVersionResource{
 	Group:    "",
 	Version:  "v1",
 	Resource: "persistentvolumeclaims",
 }
 
-func NewCockroachPVCClient(namespace string) (*k8s_generic.Client[CockroachPVC, *CockroachPVC], error) {
-	return k8s_generic.New[CockroachPVC](
-		CockroachPVCSchema,
+func NewRedisPVCClient(namespace string) (*k8s_generic.Client[RedisPVC, *RedisPVC], error) {
+	return k8s_generic.New[RedisPVC](
+		Redisema,
 		namespace,
 		k8s_generic.Merge(map[string]interface{}{
-			"ponglehub.co.uk/resource-type": "cockroachdb",
+			"ponglehub.co.uk/resource-type": "redis",
 		}, LABEL_FILTERS),
 	)
 }

@@ -208,3 +208,36 @@ func (s *state) getCSecretsDemand() demand[resources.CockroachSecret] {
 		},
 	)
 }
+
+func (s *state) getCMigrationsDemand() map[string]map[string]map[int64]crds.CockroachMigration {
+	migrations := map[string]map[string]map[int64]crds.CockroachMigration{}
+
+	// Get migrations as mapped lookup
+	for _, migration := range s.cmigrations.state {
+		if _, ok := migrations[migration.Deployment]; !ok {
+			migrations[migration.Deployment] = map[string]map[int64]crds.CockroachMigration{}
+		}
+
+		if _, ok := migrations[migration.Deployment][migration.Database]; !ok {
+			migrations[migration.Deployment][migration.Database] = map[int64]crds.CockroachMigration{}
+		}
+
+		migrations[migration.Deployment][migration.Database][migration.Index] = migration
+	}
+
+	// Pick out the migrations for statefulsets that
+	demand := map[string]map[string]map[int64]crds.CockroachMigration{}
+	for _, db := range s.cdatabases.state {
+		if dbMigrations, ok := migrations[db.DB]; ok {
+			if migrations, ok := dbMigrations[db.Name]; ok {
+				if _, ok := demand[db.DB]; !ok {
+					demand[db.DB] = map[string]map[int64]crds.CockroachMigration{}
+				}
+
+				demand[db.DB][db.Name] = migrations
+			}
+		}
+	}
+
+	return demand
+}

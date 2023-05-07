@@ -10,7 +10,7 @@ import (
 )
 
 type BasicType interface {
-	string | int64 | bool | map[string]string
+	string | int | int64 | bool | map[string]string
 }
 
 func GetEncodedProperty(u *unstructured.Unstructured, args ...string) (string, error) {

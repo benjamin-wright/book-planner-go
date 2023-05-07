@@ -193,6 +193,7 @@ func (m *Manager) refresh() {
 		m.refreshDBs()
 		m.processCockroachDBs()
 		m.processCockroachClients()
+		m.processCockroachMigrations()
 		zap.S().Infof("Processing Done")
 	}
 }
@@ -334,6 +335,7 @@ func (m *Manager) processCockroachClients() {
 		cli, err := cockroach.New(database, m.namespace)
 		if err != nil {
 			zap.S().Errorf("Failed to create database client for %s: %+v", database, err)
+			continue
 		}
 		defer cli.Stop()
 
@@ -417,6 +419,56 @@ func (m *Manager) processCockroachClients() {
 		err := m.clients.csecrets.Create(m.ctx, secret)
 		if err != nil {
 			zap.S().Errorf("Failed to create secret %s: %+v", secret.Name, err)
+		}
+	}
+}
+
+func (m *Manager) processCockroachMigrations() {
+	migrationDemand := m.state.getCMigrationsDemand()
+
+	for deployment, byDatabase := range migrationDemand {
+		for database, migrations := range byDatabase {
+			client, err := cockroach.NewMigrations(deployment, m.namespace, database)
+			if err != nil {
+				zap.S().Errorf("Failed to create migrations client: %+v", err)
+				continue
+			}
+			defer client.Stop()
+
+			if ok, err := client.HasMigrationsTable(); err != nil {
+				zap.S().Errorf("Failed to check for migrations table: %+v", err)
+				continue
+			} else if !ok {
+				err := client.CreateMigrationsTable()
+				if err != nil {
+					zap.S().Errorf("Failed to create migrations client: %+v", err)
+					continue
+				}
+			}
+
+			nextIndex := client.LatestMigration() + 1
+			for {
+				migration, ok := migrations[nextIndex]
+				if !ok {
+					break
+				}
+
+				zap.S().Infof("Running migration %s [%s] %d", migration.Deployment, migration.Database, nextIndex)
+
+				err := client.RunMigration(migration.Migration)
+				if err != nil {
+					zap.S().Errorf("Failed to run migration %d: %+v", nextIndex, err)
+					break
+				}
+
+				err = client.AddMigration(nextIndex)
+				if err != nil {
+					zap.S().Errorf("Failed to add migration index %d: %+v", nextIndex, err)
+					break
+				}
+
+				nextIndex += 1
+			}
 		}
 	}
 }

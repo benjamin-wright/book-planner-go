@@ -15,6 +15,7 @@ import (
 func makeClients(t *testing.T, namespace string) (
 	*k8s_generic.Client[crds.CockroachDB, *crds.CockroachDB],
 	*k8s_generic.Client[crds.CockroachClient, *crds.CockroachClient],
+	*k8s_generic.Client[crds.CockroachMigration, *crds.CockroachMigration],
 ) {
 	cdbs, err := crds.NewCockroachDBClient(namespace)
 	if err != nil {
@@ -28,17 +29,23 @@ func makeClients(t *testing.T, namespace string) (
 		t.FailNow()
 	}
 
-	return cdbs, cclients
+	cms, err := crds.NewCockroachMigrationClient(namespace)
+	if err != nil {
+		t.Logf("failed to create cmigrations client: %+v", err)
+		t.FailNow()
+	}
+
+	return cdbs, cclients, cms
 }
 
-func TestSomethingIntegration(t *testing.T) {
+func TestClientCredentialsIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
 	namespace := os.Getenv("NAMESPACE")
 
-	cdbs, cclients := makeClients(t, namespace)
+	cdbs, cclients, cms := makeClients(t, namespace)
 
 	err := cdbs.DeleteAll(context.Background())
 	if err != nil {
@@ -49,6 +56,12 @@ func TestSomethingIntegration(t *testing.T) {
 	err = cclients.DeleteAll(context.Background())
 	if err != nil {
 		t.Logf("failed to clear existing clients: %+v", err)
+		t.FailNow()
+	}
+
+	err = cms.DeleteAll(context.Background())
+	if err != nil {
+		t.Logf("failed to clear existing migrations: %+v", err)
 		t.FailNow()
 	}
 
@@ -70,6 +83,22 @@ func TestSomethingIntegration(t *testing.T) {
 	})
 	if err != nil {
 		t.Logf("failed to create test client: %+v", err)
+		t.FailNow()
+	}
+
+	err = cms.Create(context.Background(), crds.CockroachMigration{
+		Name:       "mig1",
+		Deployment: "random-db",
+		Database:   "new_db",
+		Migration: `
+			CREATE TABLE hithere (
+				id INT PRIMARY KEY NOT NULL UNIQUE
+			);
+		`,
+		Index: 1,
+	})
+	if err != nil {
+		t.Logf("failed to create test migration: %+v", err)
 		t.FailNow()
 	}
 }

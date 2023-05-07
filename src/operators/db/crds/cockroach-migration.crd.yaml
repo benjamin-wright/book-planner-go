@@ -23,7 +23,7 @@ spec:
                   type: string
                 index:
                   type: integer
-              required: [ database, migration ]
+              required: [ deployment, database, migration, index ]
             status:
               type: object
               properties:

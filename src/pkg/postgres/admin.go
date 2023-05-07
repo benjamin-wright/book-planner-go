@@ -48,7 +48,7 @@ func (d *AdminConn) ListUsers() ([]string, error) {
 
 func (d *AdminConn) CreateUser(username string) error {
 	zap.S().Infof("Creating user %s", username)
-	if _, err := d.conn.Exec(context.Background(), "CREATE USER $1", username); err != nil {
+	if _, err := d.conn.Exec(context.Background(), "CREATE USER "+sanitize(username)); err != nil {
 		return fmt.Errorf("failed to create database user: %+v", err)
 	}
 
@@ -57,7 +57,7 @@ func (d *AdminConn) CreateUser(username string) error {
 
 func (d *AdminConn) DropUser(username string) error {
 	zap.S().Infof("Deleting user %s", username)
-	if _, err := d.conn.Exec(context.Background(), "DROP USER $1", username); err != nil {
+	if _, err := d.conn.Exec(context.Background(), "DROP USER "+sanitize(username)); err != nil {
 		return fmt.Errorf("failed to drop database user: %+v", err)
 	}
 
@@ -74,7 +74,7 @@ func (d *AdminConn) ListDatabases() ([]string, error) {
 	databases := []string{}
 	for rows.Next() {
 		var name string
-		if err := rows.Scan(&name, nil); err != nil {
+		if err := rows.Scan(&name, nil, nil, nil, nil, nil); err != nil {
 			return nil, fmt.Errorf("failed to decode database: %+v", err)
 		}
 
@@ -118,7 +118,7 @@ func (d *AdminConn) ListPermitted(database string) ([]string, error) {
 	for rows.Next() {
 		var user string
 		var privilege_type string
-		if err := rows.Scan(nil, nil, &user, &privilege_type); err != nil {
+		if err := rows.Scan(nil, &user, &privilege_type, nil); err != nil {
 			return nil, fmt.Errorf("failed to decode user permission: %+v", err)
 		}
 

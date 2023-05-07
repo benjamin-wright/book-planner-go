@@ -41,7 +41,7 @@ func (s *CockroachStatefulSet) ToUnstructured(namespace string) *unstructured.Un
 						"containers": []map[string]interface{}{
 							{
 								"name":  "database",
-								"image": "cockroachdb/cockroach:v20.2.8",
+								"image": "cockroachdb/cockroach:v22.2.8",
 								"command": []string{
 									"cockroach",
 								},

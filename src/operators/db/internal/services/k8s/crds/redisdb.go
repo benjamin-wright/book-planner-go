@@ -14,7 +14,7 @@ type RedisDB struct {
 	Storage string
 }
 
-func (db *RedisDB) ToUnstructured() *unstructured.Unstructured {
+func (db *RedisDB) ToUnstructured(namespace string) *unstructured.Unstructured {
 	result := &unstructured.Unstructured{}
 	result.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "ponglehub.co.uk/v1alpha1",

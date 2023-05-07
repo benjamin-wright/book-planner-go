@@ -20,7 +20,7 @@ import (
 type Resource[T comparable] interface {
 	*T
 	GetName() string
-	ToUnstructured() *unstructured.Unstructured
+	ToUnstructured(namespace string) *unstructured.Unstructured
 	FromUnstructured(obj *unstructured.Unstructured) error
 }
 
@@ -62,7 +62,7 @@ func New[T comparable, PT Resource[T]](schema schema.GroupVersionResource, names
 func (c *Client[T, PT]) Create(ctx context.Context, resource T) error {
 	ptr := PT(&resource)
 
-	_, err := c.client.Resource(c.schema).Namespace(c.namespace).Create(ctx, ptr.ToUnstructured(), v1.CreateOptions{})
+	_, err := c.client.Resource(c.schema).Namespace(c.namespace).Create(ctx, ptr.ToUnstructured(c.namespace), v1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create %T: %+v", resource, err)
 	}
@@ -91,7 +91,7 @@ func (c *Client[T, PT]) DeleteAll(ctx context.Context) error {
 func (c *Client[T, PT]) Update(ctx context.Context, resource T) error {
 	ptr := PT(&resource)
 
-	_, err := c.client.Resource(c.schema).Namespace(c.namespace).Update(ctx, ptr.ToUnstructured(), v1.UpdateOptions{})
+	_, err := c.client.Resource(c.schema).Namespace(c.namespace).Update(ctx, ptr.ToUnstructured(c.namespace), v1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed up update resource %s: %+v", ptr.GetName(), err)
 	}

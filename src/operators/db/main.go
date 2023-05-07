@@ -22,40 +22,45 @@ func main() {
 
 	cdbClient, err := crds.NewCockroachDBClient(namespace)
 	if err != nil {
-		zap.S().Fatalf("Failed to watch cockroach dbs: %+v", err)
+		zap.S().Fatalf("Failed to get client for cockroach dbs: %+v", err)
 	}
 
 	ccClient, err := crds.NewCockroachClientClient(namespace)
 	if err != nil {
-		zap.S().Fatalf("Failed to watch cockroach clients: %+v", err)
+		zap.S().Fatalf("Failed to get client for cockroach clients: %+v", err)
 	}
 
 	cmClient, err := crds.NewCockroachMigrationClient(namespace)
 	if err != nil {
-		zap.S().Fatalf("Failed to watch cockroach migrations: %+v", err)
+		zap.S().Fatalf("Failed to get client for cockroach migrations: %+v", err)
 	}
 
 	rdbClient, err := crds.NewRedisDBClient(namespace)
 	if err != nil {
-		zap.S().Fatalf("Failed to watch redis dbs: %+v", err)
+		zap.S().Fatalf("Failed to get client for redis dbs: %+v", err)
 	}
 
 	cssClient, err := resources.NewCockroachStatefulSetClient(namespace)
 	if err != nil {
-		zap.S().Fatalf("Failed to watch cockroach stateful sets: %+v", err)
+		zap.S().Fatalf("Failed to get client for cockroach stateful sets: %+v", err)
 	}
 
 	cpvcClient, err := resources.NewCockroachPVCClient(namespace)
 	if err != nil {
-		zap.S().Fatalf("Failed to watch cockroach persistent volume claims: %+v", err)
+		zap.S().Fatalf("Failed to get client for cockroach persistent volume claims: %+v", err)
 	}
 
 	csvcClient, err := resources.NewCockroachServiceClient(namespace)
 	if err != nil {
-		zap.S().Fatalf("Failed to watch cockroach services: %+v", err)
+		zap.S().Fatalf("Failed to get client for cockroach services: %+v", err)
 	}
 
-	m, err := manager.New(namespace, cdbClient, ccClient, cmClient, rdbClient, cssClient, cpvcClient, csvcClient, time.Second*5)
+	csecretClient, err := resources.NewCockroachSecretClient(namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to get client for cockroach secrets: %+v", err)
+	}
+
+	m, err := manager.New(namespace, cdbClient, ccClient, cmClient, rdbClient, cssClient, cpvcClient, csvcClient, csecretClient, time.Second*5)
 	if err != nil {
 		zap.S().Fatalf("Failed to start the manager: %+v", err)
 	}

@@ -14,7 +14,7 @@ type CockroachDB struct {
 	Storage string
 }
 
-func (db *CockroachDB) ToUnstructured() *unstructured.Unstructured {
+func (db *CockroachDB) ToUnstructured(namespace string) *unstructured.Unstructured {
 	result := &unstructured.Unstructured{}
 	result.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "ponglehub.co.uk/v1alpha1",

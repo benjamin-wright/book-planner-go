@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,6 +11,20 @@ import (
 
 type BasicType interface {
 	string | int64 | bool | map[string]string
+}
+
+func GetEncodedProperty(u *unstructured.Unstructured, args ...string) (string, error) {
+	value, err := GetProperty[string](u, args...)
+	if err != nil {
+		return "", fmt.Errorf("failed to find property: %+v", err)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode property %s: %+v", strings.Join(args, "."), err)
+	}
+
+	return string(decoded), nil
 }
 
 func GetProperty[T BasicType](u *unstructured.Unstructured, args ...string) (T, error) {

@@ -15,7 +15,7 @@ type CockroachPVC struct {
 	Storage  string
 }
 
-func (p *CockroachPVC) ToUnstructured() *unstructured.Unstructured {
+func (p *CockroachPVC) ToUnstructured(namespace string) *unstructured.Unstructured {
 	pvc := &unstructured.Unstructured{
 		Object: map[string]interface{}{},
 	}

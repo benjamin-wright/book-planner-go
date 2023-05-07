@@ -1,7 +1,6 @@
 package manager
 
 import (
-	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/cockroach"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/crds"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/resources"
@@ -15,6 +14,7 @@ type state struct {
 	csss         bucket[resources.CockroachStatefulSet, *resources.CockroachStatefulSet]
 	cpvcs        bucket[resources.CockroachPVC, *resources.CockroachPVC]
 	csvcs        bucket[resources.CockroachService, *resources.CockroachService]
+	csecrets     bucket[resources.CockroachSecret, *resources.CockroachSecret]
 	cdatabases   bucket[cockroach.Database, *cockroach.Database]
 	cusers       bucket[cockroach.User, *cockroach.User]
 	cpermissions bucket[cockroach.Permission, *cockroach.Permission]
@@ -29,6 +29,7 @@ func newState() state {
 		csss:         newBucket[resources.CockroachStatefulSet](),
 		cpvcs:        newBucket[resources.CockroachPVC](),
 		csvcs:        newBucket[resources.CockroachService](),
+		csecrets:     newBucket[resources.CockroachSecret](),
 		cdatabases:   newBucket[cockroach.Database](),
 		cusers:       newBucket[cockroach.User](),
 		cpermissions: newBucket[cockroach.Permission](),
@@ -115,13 +116,17 @@ func (s *state) getCPVCDemand(toRemove []resources.CockroachStatefulSet) []resou
 	return pvcsToRemove
 }
 
-func (s *state) getCDBDemand() demand[cockroach.Database] {
-	d := demand[cockroach.Database]{
-		toAdd:    []cockroach.Database{},
-		toRemove: []cockroach.Database{},
+func clientDemand[T comparable, PT Nameable[T]](
+	s *state,
+	existing map[string]T,
+	transform func(crds.CockroachClient) T,
+) demand[T] {
+	d := demand[T]{
+		toAdd:    []T{},
+		toRemove: []T{},
 	}
 
-	seen := map[string]cockroach.Database{}
+	seen := map[string]T{}
 
 	for _, client := range s.cclients.state {
 		ss, hasSS := s.csss.state[client.Deployment]
@@ -131,96 +136,75 @@ func (s *state) getCDBDemand() demand[cockroach.Database] {
 			continue
 		}
 
-		desired := cockroach.Database{
-			Name: client.Database,
-			DB:   client.Deployment,
-		}
-		seen[desired.GetName()] = desired
+		desired := transform(client)
+		ptr := PT(&desired)
+		seen[ptr.GetName()] = desired
 
-		if _, ok := s.cdatabases.state[desired.GetName()]; !ok {
+		if _, ok := existing[ptr.GetName()]; !ok {
 			d.toAdd = append(d.toAdd, desired)
 		}
 	}
 
-	for current, db := range s.cdatabases.state {
+	for current, db := range existing {
 		if _, ok := seen[current]; !ok {
 			d.toRemove = append(d.toRemove, db)
 		}
 	}
 
 	return d
+}
+
+func (s *state) getCDBDemand() demand[cockroach.Database] {
+	return clientDemand(
+		s,
+		s.cdatabases.state,
+		func(client crds.CockroachClient) cockroach.Database {
+			return cockroach.Database{
+				Name: client.Database,
+				DB:   client.Deployment,
+			}
+		},
+	)
 }
 
 func (s *state) getCUserDemand() demand[cockroach.User] {
-	d := demand[cockroach.User]{
-		toAdd:    []cockroach.User{},
-		toRemove: []cockroach.User{},
-	}
-
-	seen := map[string]cockroach.User{}
-
-	for _, client := range s.cclients.state {
-		ss, hasSS := s.csss.state[client.Deployment]
-		_, hasSvc := s.csvcs.state[client.Deployment]
-
-		if !hasSS || !hasSvc || !ss.Ready {
-			continue
-		}
-
-		desired := cockroach.User{
-			Name: client.Username,
-			DB:   client.Deployment,
-		}
-		seen[desired.GetName()] = desired
-
-		if _, ok := s.cusers.state[desired.GetName()]; !ok {
-			d.toAdd = append(d.toAdd, desired)
-		}
-	}
-
-	for current, db := range s.cusers.state {
-		if _, ok := seen[current]; !ok {
-			d.toRemove = append(d.toRemove, db)
-		}
-	}
-
-	return d
+	return clientDemand(
+		s,
+		s.cusers.state,
+		func(client crds.CockroachClient) cockroach.User {
+			return cockroach.User{
+				Name: client.Username,
+				DB:   client.Deployment,
+			}
+		},
+	)
 }
 
 func (s *state) getCPermissionDemand() demand[cockroach.Permission] {
-	d := demand[cockroach.Permission]{
-		toAdd:    []cockroach.Permission{},
-		toRemove: []cockroach.Permission{},
-	}
+	return clientDemand(
+		s,
+		s.cpermissions.state,
+		func(client crds.CockroachClient) cockroach.Permission {
+			return cockroach.Permission{
+				User:     client.Username,
+				Database: client.Database,
+				DB:       client.Deployment,
+			}
+		},
+	)
+}
 
-	seen := map[string]cockroach.Permission{}
-
-	for _, client := range s.cclients.state {
-		ss, hasSS := s.csss.state[client.Deployment]
-		_, hasSvc := s.csvcs.state[client.Deployment]
-
-		if !hasSS || !hasSvc || !ss.Ready {
-			continue
-		}
-
-		desired := cockroach.Permission{
-			User:     client.Username,
-			Database: client.Database,
-			DB:       client.Deployment,
-		}
-		seen[desired.GetName()] = desired
-
-		if _, ok := s.cpermissions.state[desired.GetName()]; !ok {
-			zap.S().Infof("Adding %s", desired.GetName())
-			d.toAdd = append(d.toAdd, desired)
-		}
-	}
-
-	for current, db := range s.cpermissions.state {
-		if _, ok := seen[current]; !ok {
-			d.toRemove = append(d.toRemove, db)
-		}
-	}
-
-	return d
+func (s *state) getCSecretsDemand() demand[resources.CockroachSecret] {
+	return clientDemand(
+		s,
+		s.csecrets.state,
+		func(client crds.CockroachClient) resources.CockroachSecret {
+			return resources.CockroachSecret{
+				Name:     client.Secret,
+				DB:       client.Deployment,
+				Database: client.Database,
+				User:     client.Username,
+			}
+		},
+	)
 }

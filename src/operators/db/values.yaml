@@ -1,11 +1,8 @@
 name: db
 rbacs:
 - apiGroups: ["apps", ""]
-  resources: ["statefulsets", "services"]
+  resources: ["statefulsets", "services", "secrets"]
   verbs: ["create", "get", "list", "watch", "update", "delete"]
-- apiGroups: [""]
-  resources: ["secrets"]
-  verbs: ["create", "get", "list", "delete"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "list", "watch", "delete"]

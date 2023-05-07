@@ -10,7 +10,7 @@ type CockroachService struct {
 	Name string
 }
 
-func (s *CockroachService) ToUnstructured() *unstructured.Unstructured {
+func (s *CockroachService) ToUnstructured(namespace string) *unstructured.Unstructured {
 	statefulset := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "v1",

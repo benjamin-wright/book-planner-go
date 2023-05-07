@@ -15,7 +15,7 @@ type CockroachStatefulSet struct {
 	Ready   bool
 }
 
-func (s *CockroachStatefulSet) ToUnstructured() *unstructured.Unstructured {
+func (s *CockroachStatefulSet) ToUnstructured(namespace string) *unstructured.Unstructured {
 	statefulset := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "apps/v1",

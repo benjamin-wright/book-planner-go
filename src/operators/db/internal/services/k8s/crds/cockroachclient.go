@@ -17,7 +17,7 @@ type CockroachClient struct {
 	Secret     string
 }
 
-func (cli *CockroachClient) ToUnstructured() *unstructured.Unstructured {
+func (cli *CockroachClient) ToUnstructured(namespace string) *unstructured.Unstructured {
 	result := &unstructured.Unstructured{}
 	result.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "ponglehub.co.uk/v1alpha1",

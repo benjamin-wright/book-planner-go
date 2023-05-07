@@ -21,6 +21,7 @@ type clients struct {
 	csss        K8sClient[resources.CockroachStatefulSet]
 	cpvcs       K8sClient[resources.CockroachPVC]
 	csvcs       K8sClient[resources.CockroachService]
+	csecrets    K8sClient[resources.CockroachSecret]
 }
 
 type streams struct {
@@ -31,6 +32,7 @@ type streams struct {
 	csss        <-chan k8s_generic.Update[resources.CockroachStatefulSet]
 	cpvcs       <-chan k8s_generic.Update[resources.CockroachPVC]
 	csvcs       <-chan k8s_generic.Update[resources.CockroachService]
+	csecrets    <-chan k8s_generic.Update[resources.CockroachSecret]
 }
 
 type Manager struct {
@@ -63,6 +65,7 @@ func New(
 	cssClient K8sClient[resources.CockroachStatefulSet],
 	cpvcClient K8sClient[resources.CockroachPVC],
 	csvcClient K8sClient[resources.CockroachService],
+	csecretClient K8sClient[resources.CockroachSecret],
 	debouncer time.Duration,
 ) (*Manager, error) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -75,6 +78,7 @@ func New(
 		csss:        cssClient,
 		cpvcs:       cpvcClient,
 		csvcs:       csvcClient,
+		csecrets:    csecretClient,
 	}
 
 	cdbs, err := clients.cdbs.Watch(ctx, cancel)
@@ -112,6 +116,11 @@ func New(
 		return nil, fmt.Errorf("failed to watch cockroach services: %+v", err)
 	}
 
+	csecrets, err := clients.csecrets.Watch(ctx, cancel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to watch cockroach secrets: %+v", err)
+	}
+
 	streams := streams{
 		cdbs:        cdbs,
 		cclients:    cclients,
@@ -120,6 +129,7 @@ func New(
 		csss:        csss,
 		cpvcs:       cpvcs,
 		csvcs:       csvcs,
+		csecrets:    csecrets,
 	}
 
 	return &Manager{
@@ -174,6 +184,9 @@ func (m *Manager) refresh() {
 		m.debouncer.Trigger()
 	case update := <-m.streams.cpvcs:
 		m.state.cpvcs.apply(update)
+		m.debouncer.Trigger()
+	case update := <-m.streams.csecrets:
+		m.state.csecrets.apply(update)
 		m.debouncer.Trigger()
 	case <-m.debouncer.Wait():
 		zap.S().Infof("Processing Started")
@@ -287,6 +300,7 @@ func (m *Manager) processCockroachClients() {
 	dbDemand := m.state.getCDBDemand()
 	userDemand := m.state.getCUserDemand()
 	permsDemand := m.state.getCPermissionDemand()
+	secretsDemand := m.state.getCSecretsDemand()
 
 	dbs := map[string]struct{}{}
 	for _, db := range dbDemand.toAdd {
@@ -306,6 +320,14 @@ func (m *Manager) processCockroachClients() {
 	}
 	for _, perm := range permsDemand.toRemove {
 		dbs[perm.DB] = struct{}{}
+	}
+
+	for _, secret := range secretsDemand.toRemove {
+		zap.S().Infof("Removing secret %s", secret.Name)
+		err := m.clients.csecrets.Delete(m.ctx, secret.Name)
+		if err != nil {
+			zap.S().Errorf("Failed to delete secret %s: %+v", secret.Name, err)
+		}
 	}
 
 	for database := range dbs {
@@ -386,6 +408,14 @@ func (m *Manager) processCockroachClients() {
 			if err != nil {
 				zap.S().Errorf("Failed to grant permission: %+v", err)
 			}
+		}
+	}
+
+	for _, secret := range secretsDemand.toAdd {
+		zap.S().Infof("Adding secret %s", secret.Name)
+		err := m.clients.csecrets.Create(m.ctx, secret)
+		if err != nil {
+			zap.S().Errorf("Failed to create secret %s: %+v", secret.Name, err)
 		}
 	}
 }

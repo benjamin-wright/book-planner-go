@@ -17,7 +17,7 @@ type CockroachMigration struct {
 	Index      int64
 }
 
-func (cm *CockroachMigration) ToUnstructured() *unstructured.Unstructured {
+func (cm *CockroachMigration) ToUnstructured(namespace string) *unstructured.Unstructured {
 	result := &unstructured.Unstructured{}
 	result.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "ponglehub.co.uk/v1alpha1",

@@ -12,7 +12,7 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-func makeClients(t *testing.T, namespace string) (
+func makeCockroachClients(t *testing.T, namespace string) (
 	*k8s_generic.Client[crds.CockroachDB, *crds.CockroachDB],
 	*k8s_generic.Client[crds.CockroachClient, *crds.CockroachClient],
 	*k8s_generic.Client[crds.CockroachMigration, *crds.CockroachMigration],
@@ -38,14 +38,14 @@ func makeClients(t *testing.T, namespace string) (
 	return cdbs, cclients, cms
 }
 
-func TestClientCredentialsIntegration(t *testing.T) {
+func TestCockroachIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
 	namespace := os.Getenv("NAMESPACE")
 
-	cdbs, cclients, cms := makeClients(t, namespace)
+	cdbs, cclients, cms := makeCockroachClients(t, namespace)
 
 	err := cdbs.DeleteAll(context.Background())
 	if err != nil {
@@ -99,6 +99,41 @@ func TestClientCredentialsIntegration(t *testing.T) {
 	})
 	if err != nil {
 		t.Logf("failed to create test migration: %+v", err)
+		t.FailNow()
+	}
+}
+
+func makeRedisClients(t *testing.T, namespace string) *k8s_generic.Client[crds.RedisDB, *crds.RedisDB] {
+	rdbs, err := crds.NewRedisDBClient(namespace)
+	if err != nil {
+		t.Logf("failed to create rdb client: %+v", err)
+		t.FailNow()
+	}
+
+	return rdbs
+}
+
+func TestRedisIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	namespace := os.Getenv("NAMESPACE")
+
+	rdbs := makeRedisClients(t, namespace)
+
+	err := rdbs.DeleteAll(context.Background())
+	if err != nil {
+		t.Logf("failed to clear existing dbs: %+v", err)
+		t.FailNow()
+	}
+
+	err = rdbs.Create(context.Background(), crds.RedisDB{
+		Name:    "redis-db",
+		Storage: "256Mi",
+	})
+	if err != nil {
+		t.Logf("failed to create test db: %+v", err)
 		t.FailNow()
 	}
 }

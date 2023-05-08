@@ -45,6 +45,10 @@ func (db *RedisDB) GetName() string {
 	return db.Name
 }
 
+func (db *RedisDB) GetStorage() string {
+	return db.Storage
+}
+
 var RedisDBSchema = schema.GroupVersionResource{
 	Group:    "ponglehub.co.uk",
 	Version:  "v1alpha1",

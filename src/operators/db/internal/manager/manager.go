@@ -236,6 +236,7 @@ func (m *Manager) refresh() {
 		m.processCockroachDBs()
 		m.processCockroachClients()
 		m.processCockroachMigrations()
+		m.processRedisDBs()
 		zap.S().Infof("Processing Done")
 	}
 }
@@ -291,7 +292,7 @@ func (m *Manager) refreshDBs() {
 func (m *Manager) processCockroachDBs() {
 	ssDemand := m.state.getCSSSDemand()
 	svcDemand := m.state.getCSvcDemand()
-	pvcsToRemove := m.state.getCPVCDemand(ssDemand.toRemove)
+	pvcsToRemove := m.state.getCPVCDemand()
 
 	for _, db := range ssDemand.toRemove {
 		zap.S().Infof("Deleting db: %s", db.Name)
@@ -511,6 +512,57 @@ func (m *Manager) processCockroachMigrations() {
 
 				nextIndex += 1
 			}
+		}
+	}
+}
+
+func (m *Manager) processRedisDBs() {
+	ssDemand := m.state.getRSSSDemand()
+	svcDemand := m.state.getRSvcDemand()
+	pvcsToRemove := m.state.getRPVCDemand()
+
+	for _, db := range ssDemand.toRemove {
+		zap.S().Infof("Deleting db: %s", db.Name)
+		err := m.clients.rsss.Delete(m.ctx, db.Name)
+
+		if err != nil {
+			zap.S().Errorf("Failed to delete redis stateful set: %+v", err)
+		}
+	}
+
+	for _, svc := range svcDemand.toRemove {
+		zap.S().Infof("Deleting service: %s", svc.Name)
+		err := m.clients.rsvcs.Delete(m.ctx, svc.Name)
+
+		if err != nil {
+			zap.S().Errorf("Failed to delete redis service: %+v", err)
+		}
+	}
+
+	for _, pvc := range pvcsToRemove {
+		zap.S().Infof("Deleting pvc: %s", pvc.Name)
+		err := m.clients.rpvcs.Delete(m.ctx, pvc.Name)
+
+		if err != nil {
+			zap.S().Errorf("Failed to delete redis PVC: %+v", err)
+		}
+	}
+
+	for _, db := range ssDemand.toAdd {
+		zap.S().Infof("Creating db: %s", db.Name)
+		err := m.clients.rsss.Create(m.ctx, db)
+
+		if err != nil {
+			zap.S().Errorf("Failed to create redis stateful set: %+v", err)
+		}
+	}
+
+	for _, svc := range svcDemand.toAdd {
+		zap.S().Infof("Creating service: %s", svc.Name)
+		err := m.clients.rsvcs.Create(m.ctx, svc)
+
+		if err != nil {
+			zap.S().Errorf("Failed to create redis service: %+v", err)
 		}
 	}
 }

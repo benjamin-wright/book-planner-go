@@ -156,6 +156,14 @@ func (db *CockroachStatefulSet) GetName() string {
 	return db.Name
 }
 
+func (db *CockroachStatefulSet) GetStorage() string {
+	return db.Storage
+}
+
+func (db *CockroachStatefulSet) IsReady() bool {
+	return db.Ready
+}
+
 var CockroachStatefulSetSchema = schema.GroupVersionResource{
 	Group:    "apps",
 	Version:  "v1",

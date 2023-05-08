@@ -45,6 +45,10 @@ func (db *CockroachDB) GetName() string {
 	return db.Name
 }
 
+func (db *CockroachDB) GetStorage() string {
+	return db.Storage
+}
+
 var CockroachDBSchema = schema.GroupVersionResource{
 	Group:    "ponglehub.co.uk",
 	Version:  "v1alpha1",

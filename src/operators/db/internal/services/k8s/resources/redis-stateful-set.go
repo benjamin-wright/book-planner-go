@@ -61,16 +61,17 @@ func (s *RedisStatefulSet) ToUnstructured(namespace string) *unstructured.Unstru
 								},
 								"ports": []map[string]interface{}{
 									{
-										"name":          "6379",
+										"name":          "tcp",
 										"protocol":      "TCP",
 										"containerPort": 6379,
 									},
 								},
 								"readinessProbe": map[string]interface{}{
-									"httpGet": map[string]interface{}{
-										"path":   "/ping",
-										"port":   "http",
-										"scheme": "HTTP",
+									"exec": map[string]interface{}{
+										"command": []string{
+											"redis-cli",
+											"ping",
+										},
 									},
 									"initialDelaySeconds": 1,
 									"periodSeconds":       5,
@@ -141,6 +142,14 @@ func (s *RedisStatefulSet) FromUnstructured(obj *unstructured.Unstructured) erro
 
 func (db *RedisStatefulSet) GetName() string {
 	return db.Name
+}
+
+func (db *RedisStatefulSet) GetStorage() string {
+	return db.Storage
+}
+
+func (db *RedisStatefulSet) IsReady() bool {
+	return db.Ready
 }
 
 var RedisStatefulSetSchema = schema.GroupVersionResource{

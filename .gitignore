@@ -1,3 +1,4 @@
 .scratch
 tilt_modules
 dist
+*.wasm

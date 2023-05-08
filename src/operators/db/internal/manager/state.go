@@ -42,128 +42,45 @@ func newState() state {
 	}
 }
 
-type demand[T any] struct {
-	toAdd    []T
-	toRemove []T
-}
-
 func (s *state) getCSSSDemand() demand[resources.CockroachStatefulSet] {
-	toAdd := []resources.CockroachStatefulSet{}
-	toRemove := []resources.CockroachStatefulSet{}
-
-	for name, db := range s.cdbs.state {
-		if ss, ok := s.csss.state[name]; !ok {
-			toAdd = append(toAdd, resources.CockroachStatefulSet{
+	return getStorageBoundDemand(
+		s.cdbs.state,
+		s.csss.state,
+		func(db crds.CockroachDB) resources.CockroachStatefulSet {
+			return resources.CockroachStatefulSet{
 				Name:    db.Name,
 				Storage: db.Storage,
-			})
-		} else if db.Storage != ss.Storage {
-			toRemove = append(toRemove, resources.CockroachStatefulSet{
-				Name: db.Name,
-			})
-			toAdd = append(toAdd, resources.CockroachStatefulSet{
-				Name:    db.Name,
-				Storage: db.Storage,
-			})
-		}
-	}
-
-	for name := range s.csss.state {
-		if _, ok := s.cdbs.state[name]; !ok {
-			toRemove = append(toRemove, resources.CockroachStatefulSet{
-				Name: name,
-			})
-		}
-	}
-
-	return demand[resources.CockroachStatefulSet]{
-		toAdd:    toAdd,
-		toRemove: toRemove,
-	}
+			}
+		},
+	)
 }
 
 func (s *state) getCSvcDemand() demand[resources.CockroachService] {
-	toAdd := []resources.CockroachService{}
-	toRemove := []resources.CockroachService{}
-
-	for name := range s.cdbs.state {
-		if _, ok := s.csvcs.state[name]; !ok {
-			toAdd = append(toAdd, resources.CockroachService{
-				Name: name,
-			})
-		}
-	}
-
-	for name := range s.csss.state {
-		if _, ok := s.cdbs.state[name]; !ok {
-			toRemove = append(toRemove, resources.CockroachService{
-				Name: name,
-			})
-		}
-	}
-
-	return demand[resources.CockroachService]{
-		toAdd:    toAdd,
-		toRemove: toRemove,
-	}
+	return getOneForOneDemand(
+		s.cdbs.state,
+		s.csvcs.state,
+		func(db crds.CockroachDB) resources.CockroachService {
+			return resources.CockroachService{Name: db.Name}
+		},
+	)
 }
 
-func (s *state) getCPVCDemand(toRemove []resources.CockroachStatefulSet) []resources.CockroachPVC {
-	pvcsToRemove := []resources.CockroachPVC{}
-
-	for _, db := range toRemove {
-		for _, pvc := range s.cpvcs.state {
-			if pvc.Database == db.Name {
-				pvcsToRemove = append(pvcsToRemove, pvc)
-			}
-		}
-	}
-
-	return pvcsToRemove
-}
-
-func clientDemand[T comparable, PT Nameable[T]](
-	s *state,
-	existing map[string]T,
-	transform func(crds.CockroachClient) T,
-) demand[T] {
-	d := demand[T]{
-		toAdd:    []T{},
-		toRemove: []T{},
-	}
-
-	seen := map[string]T{}
-
-	for _, client := range s.cclients.state {
-		ss, hasSS := s.csss.state[client.Deployment]
-		_, hasSvc := s.csvcs.state[client.Deployment]
-
-		if !hasSS || !hasSvc || !ss.Ready {
-			continue
-		}
-
-		desired := transform(client)
-		ptr := PT(&desired)
-		seen[ptr.GetName()] = desired
-
-		if _, ok := existing[ptr.GetName()]; !ok {
-			d.toAdd = append(d.toAdd, desired)
-		}
-	}
-
-	for current, db := range existing {
-		if _, ok := seen[current]; !ok {
-			d.toRemove = append(d.toRemove, db)
-		}
-	}
-
-	return d
+func (s *state) getCPVCDemand() []resources.CockroachPVC {
+	return getOrphanedDemand(
+		s.csss.state,
+		s.cpvcs.state,
+		func(ss resources.CockroachStatefulSet, pvc resources.CockroachPVC) bool {
+			return ss.Name == pvc.Database
+		},
+	)
 }
 
 func (s *state) getCDBDemand() demand[cockroach.Database] {
-	return clientDemand(
-		s,
+	return getServiceBoundDemand(
+		s.cclients.state,
 		s.cdatabases.state,
+		s.csss.state,
+		s.csvcs.state,
 		func(client crds.CockroachClient) cockroach.Database {
 			return cockroach.Database{
 				Name: client.Database,
@@ -174,9 +91,11 @@ func (s *state) getCDBDemand() demand[cockroach.Database] {
 }
 
 func (s *state) getCUserDemand() demand[cockroach.User] {
-	return clientDemand(
-		s,
+	return getServiceBoundDemand(
+		s.cclients.state,
 		s.cusers.state,
+		s.csss.state,
+		s.csvcs.state,
 		func(client crds.CockroachClient) cockroach.User {
 			return cockroach.User{
 				Name: client.Username,
@@ -187,9 +106,11 @@ func (s *state) getCUserDemand() demand[cockroach.User] {
 }
 
 func (s *state) getCPermissionDemand() demand[cockroach.Permission] {
-	return clientDemand(
-		s,
+	return getServiceBoundDemand(
+		s.cclients.state,
 		s.cpermissions.state,
+		s.csss.state,
+		s.csvcs.state,
 		func(client crds.CockroachClient) cockroach.Permission {
 			return cockroach.Permission{
 				User:     client.Username,
@@ -201,9 +122,11 @@ func (s *state) getCPermissionDemand() demand[cockroach.Permission] {
 }
 
 func (s *state) getCSecretsDemand() demand[resources.CockroachSecret] {
-	return clientDemand(
-		s,
+	return getServiceBoundDemand(
+		s.cclients.state,
 		s.csecrets.state,
+		s.csss.state,
+		s.csvcs.state,
 		func(client crds.CockroachClient) resources.CockroachSecret {
 			return resources.CockroachSecret{
 				Name:     client.Secret,
@@ -246,4 +169,37 @@ func (s *state) getCMigrationsDemand() map[string]map[string]map[int64]crds.Cock
 	}
 
 	return demand
+}
+
+func (s *state) getRSSSDemand() demand[resources.RedisStatefulSet] {
+	return getStorageBoundDemand(
+		s.rdbs.state,
+		s.rsss.state,
+		func(db crds.RedisDB) resources.RedisStatefulSet {
+			return resources.RedisStatefulSet{
+				Name:    db.Name,
+				Storage: db.Storage,
+			}
+		},
+	)
+}
+
+func (s *state) getRSvcDemand() demand[resources.RedisService] {
+	return getOneForOneDemand(
+		s.rdbs.state,
+		s.rsvcs.state,
+		func(db crds.RedisDB) resources.RedisService {
+			return resources.RedisService{Name: db.Name}
+		},
+	)
+}
+
+func (s *state) getRPVCDemand() []resources.RedisPVC {
+	return getOrphanedDemand(
+		s.rsss.state,
+		s.rpvcs.state,
+		func(ss resources.RedisStatefulSet, pvc resources.RedisPVC) bool {
+			return ss.Name == pvc.Database
+		},
+	)
 }

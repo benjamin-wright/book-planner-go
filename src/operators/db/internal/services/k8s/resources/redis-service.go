@@ -25,10 +25,10 @@ func (s *RedisService) ToUnstructured(namespace string) *unstructured.Unstructur
 			"spec": map[string]interface{}{
 				"ports": []map[string]interface{}{
 					{
-						"name":       "grpc",
-						"port":       26257,
+						"name":       "tcp",
+						"port":       6379,
 						"protocol":   "TCP",
-						"targetPort": "grpc",
+						"targetPort": "tcp",
 					},
 				},
 				"selector": map[string]interface{}{

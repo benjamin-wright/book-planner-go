@@ -22,9 +22,11 @@ type State struct {
 	cpermissions bucket[cockroach.Permission, *cockroach.Permission]
 	capplied     bucket[cockroach.Migration, *cockroach.Migration]
 	rdbs         bucket[crds.RedisDB, *crds.RedisDB]
+	rclients     bucket[crds.RedisClient, *crds.RedisClient]
 	rsss         bucket[resources.RedisStatefulSet, *resources.RedisStatefulSet]
 	rpvcs        bucket[resources.RedisPVC, *resources.RedisPVC]
 	rsvcs        bucket[resources.RedisService, *resources.RedisService]
+	rsecrets     bucket[resources.RedisSecret, *resources.RedisSecret]
 }
 
 func New() State {
@@ -41,9 +43,11 @@ func New() State {
 		cpermissions: newBucket[cockroach.Permission](),
 		capplied:     newBucket[cockroach.Migration](),
 		rdbs:         newBucket[crds.RedisDB](),
+		rclients:     newBucket[crds.RedisClient](),
 		rsss:         newBucket[resources.RedisStatefulSet](),
 		rpvcs:        newBucket[resources.RedisPVC](),
 		rsvcs:        newBucket[resources.RedisService](),
+		rsecrets:     newBucket[resources.RedisSecret](),
 	}
 }
 
@@ -73,36 +77,46 @@ func (s *State) Apply(update interface{}) {
 		s.capplied.apply(u)
 	case k8s_generic.Update[crds.RedisDB]:
 		s.rdbs.apply(u)
+	case k8s_generic.Update[crds.RedisClient]:
+		s.rclients.apply(u)
 	case k8s_generic.Update[resources.RedisStatefulSet]:
 		s.rsss.apply(u)
 	case k8s_generic.Update[resources.RedisPVC]:
 		s.rpvcs.apply(u)
 	case k8s_generic.Update[resources.RedisService]:
 		s.rsvcs.apply(u)
+	case k8s_generic.Update[resources.RedisSecret]:
+		s.rsecrets.apply(u)
 	default:
 		zap.S().Errorf("Wat dis? Unknown state update for type %T", u)
 	}
 }
 
-func (s *State) GetCSSSDemand() Demand[resources.CockroachStatefulSet] {
+func (s *State) GetCSSSDemand() Demand[crds.CockroachDB, resources.CockroachStatefulSet] {
 	return getStorageBoundDemand(
 		s.cdbs.state,
 		s.csss.state,
 		func(db crds.CockroachDB) resources.CockroachStatefulSet {
 			return resources.CockroachStatefulSet{
-				Name:    db.Name,
-				Storage: db.Storage,
+				CockroachStatefulSetComparable: resources.CockroachStatefulSetComparable{
+					Name:    db.Name,
+					Storage: db.Storage,
+				},
 			}
 		},
 	)
 }
 
-func (s *State) GetCSvcDemand() Demand[resources.CockroachService] {
+func (s *State) GetCSvcDemand() Demand[crds.CockroachDB, resources.CockroachService] {
 	return getOneForOneDemand(
 		s.cdbs.state,
 		s.csvcs.state,
 		func(db crds.CockroachDB) resources.CockroachService {
-			return resources.CockroachService{Name: db.Name}
+			return resources.CockroachService{
+				CockroachServiceComparable: resources.CockroachServiceComparable{
+					Name: db.Name,
+				},
+			}
 		},
 	)
 }
@@ -117,7 +131,7 @@ func (s *State) GetCPVCDemand() []resources.CockroachPVC {
 	)
 }
 
-func (s *State) GetCDBDemand() Demand[cockroach.Database] {
+func (s *State) GetCDBDemand() Demand[crds.CockroachClient, cockroach.Database] {
 	return getServiceBoundDemand(
 		s.cclients.state,
 		s.cdatabases.state,
@@ -132,7 +146,7 @@ func (s *State) GetCDBDemand() Demand[cockroach.Database] {
 	)
 }
 
-func (s *State) GetCUserDemand() Demand[cockroach.User] {
+func (s *State) GetCUserDemand() Demand[crds.CockroachClient, cockroach.User] {
 	return getServiceBoundDemand(
 		s.cclients.state,
 		s.cusers.state,
@@ -147,7 +161,7 @@ func (s *State) GetCUserDemand() Demand[cockroach.User] {
 	)
 }
 
-func (s *State) GetCPermissionDemand() Demand[cockroach.Permission] {
+func (s *State) GetCPermissionDemand() Demand[crds.CockroachClient, cockroach.Permission] {
 	return getServiceBoundDemand(
 		s.cclients.state,
 		s.cpermissions.state,
@@ -163,7 +177,7 @@ func (s *State) GetCPermissionDemand() Demand[cockroach.Permission] {
 	)
 }
 
-func (s *State) GetCSecretsDemand() Demand[resources.CockroachSecret] {
+func (s *State) GetCSecretsDemand() Demand[crds.CockroachClient, resources.CockroachSecret] {
 	return getServiceBoundDemand(
 		s.cclients.state,
 		s.csecrets.state,
@@ -171,10 +185,12 @@ func (s *State) GetCSecretsDemand() Demand[resources.CockroachSecret] {
 		s.csvcs.state,
 		func(client crds.CockroachClient) resources.CockroachSecret {
 			return resources.CockroachSecret{
-				Name:     client.Secret,
-				DB:       client.Deployment,
-				Database: client.Database,
-				User:     client.Username,
+				CockroachSecretComparable: resources.CockroachSecretComparable{
+					Name:     client.Secret,
+					DB:       client.Deployment,
+					Database: client.Database,
+					User:     client.Username,
+				},
 			}
 		},
 	)
@@ -192,8 +208,17 @@ func (s *State) RefreshCockroach(namespace string) {
 func (s *State) GetCMigrationsDemand() migrations.DBMigrations {
 	migrations := migrations.New()
 
+	isReady := func(db string) bool {
+		ss, hasSS := s.csss.state[db]
+		_, hasSvc := s.csvcs.state[db]
+
+		return hasSvc && hasSS && ss.Ready
+	}
+
 	for _, m := range s.cmigrations.state {
-		migrations.AddRequest(m.Deployment, m.Database, m.Index, m.Migration)
+		if isReady(m.Deployment) {
+			migrations.AddRequest(m.Deployment, m.Database, m.Index, m.Migration)
+		}
 	}
 
 	for _, m := range s.capplied.state {
@@ -203,25 +228,31 @@ func (s *State) GetCMigrationsDemand() migrations.DBMigrations {
 	return migrations
 }
 
-func (s *State) GetRSSSDemand() Demand[resources.RedisStatefulSet] {
+func (s *State) GetRSSSDemand() Demand[crds.RedisDB, resources.RedisStatefulSet] {
 	return getStorageBoundDemand(
 		s.rdbs.state,
 		s.rsss.state,
 		func(db crds.RedisDB) resources.RedisStatefulSet {
 			return resources.RedisStatefulSet{
-				Name:    db.Name,
-				Storage: db.Storage,
+				RedisStatefulSetComparable: resources.RedisStatefulSetComparable{
+					Name:    db.Name,
+					Storage: db.Storage,
+				},
 			}
 		},
 	)
 }
 
-func (s *State) GetRSvcDemand() Demand[resources.RedisService] {
+func (s *State) GetRSvcDemand() Demand[crds.RedisDB, resources.RedisService] {
 	return getOneForOneDemand(
 		s.rdbs.state,
 		s.rsvcs.state,
 		func(db crds.RedisDB) resources.RedisService {
-			return resources.RedisService{Name: db.Name}
+			return resources.RedisService{
+				RedisServiceComparable: resources.RedisServiceComparable{
+					Name: db.Name,
+				},
+			}
 		},
 	)
 }
@@ -232,6 +263,24 @@ func (s *State) GetRPVCDemand() []resources.RedisPVC {
 		s.rpvcs.state,
 		func(ss resources.RedisStatefulSet, pvc resources.RedisPVC) bool {
 			return ss.Name == pvc.Database
+		},
+	)
+}
+
+func (s *State) GetRSecretsDemand() Demand[crds.RedisClient, resources.RedisSecret] {
+	return getServiceBoundDemand(
+		s.rclients.state,
+		s.rsecrets.state,
+		s.rsss.state,
+		s.rsvcs.state,
+		func(client crds.RedisClient) resources.RedisSecret {
+			return resources.RedisSecret{
+				RedisSecretComparable: resources.RedisSecretComparable{
+					Name: client.Secret,
+					DB:   client.Deployment,
+					Unit: int(client.Unit),
+				},
+			}
 		},
 	)
 }

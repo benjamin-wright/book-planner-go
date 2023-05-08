@@ -8,10 +8,16 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type CockroachStatefulSet struct {
+type CockroachStatefulSetComparable struct {
 	Name    string
 	Storage string
 	Ready   bool
+}
+
+type CockroachStatefulSet struct {
+	CockroachStatefulSetComparable
+	UID             string
+	ResourceVersion string
 }
 
 func (s *CockroachStatefulSet) ToUnstructured(namespace string) *unstructured.Unstructured {
@@ -132,6 +138,9 @@ func (s *CockroachStatefulSet) FromUnstructured(obj *unstructured.Unstructured) 
 	var err error
 
 	s.Name = obj.GetName()
+	s.UID = string(obj.GetUID())
+	s.ResourceVersion = obj.GetResourceVersion()
+
 	s.Storage, err = k8s_generic.GetProperty[string](obj, "spec", "volumeClaimTemplates", "0", "spec", "resources", "requests", "storage")
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %+v", err)
@@ -156,6 +165,14 @@ func (db *CockroachStatefulSet) GetName() string {
 	return db.Name
 }
 
+func (db *CockroachStatefulSet) GetUID() string {
+	return db.UID
+}
+
+func (db *CockroachStatefulSet) GetResourceVersion() string {
+	return db.ResourceVersion
+}
+
 func (db *CockroachStatefulSet) GetStorage() string {
 	return db.Storage
 }
@@ -164,15 +181,18 @@ func (db *CockroachStatefulSet) IsReady() bool {
 	return db.Ready
 }
 
-var CockroachStatefulSetSchema = schema.GroupVersionResource{
-	Group:    "apps",
-	Version:  "v1",
-	Resource: "statefulsets",
+func (db *CockroachStatefulSet) Equal(obj CockroachStatefulSet) bool {
+	return db.CockroachStatefulSetComparable == obj.CockroachStatefulSetComparable
 }
 
 func NewCockroachStatefulSetClient(namespace string) (*k8s_generic.Client[CockroachStatefulSet, *CockroachStatefulSet], error) {
 	return k8s_generic.New[CockroachStatefulSet](
-		CockroachStatefulSetSchema,
+		schema.GroupVersionResource{
+			Group:    "apps",
+			Version:  "v1",
+			Resource: "statefulsets",
+		},
+		"StatefulSet",
 		namespace,
 		k8s_generic.Merge(map[string]interface{}{
 			"ponglehub.co.uk/resource-type": "cockroachdb",

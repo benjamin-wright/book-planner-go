@@ -8,12 +8,18 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type CockroachMigration struct {
+type CockroachMigrationComparable struct {
 	Name       string
 	Deployment string
 	Database   string
 	Migration  string
 	Index      int64
+}
+
+type CockroachMigration struct {
+	CockroachMigrationComparable
+	UID             string
+	ResourceVersion string
 }
 
 func (cm *CockroachMigration) ToUnstructured(namespace string) *unstructured.Unstructured {
@@ -39,6 +45,8 @@ func (m *CockroachMigration) FromUnstructured(obj *unstructured.Unstructured) er
 	var err error
 
 	m.Name = obj.GetName()
+	m.UID = string(obj.GetUID())
+	m.ResourceVersion = obj.GetResourceVersion()
 	m.Deployment, err = k8s_generic.GetProperty[string](obj, "spec", "deployment")
 	if err != nil {
 		return fmt.Errorf("failed to get deployment: %+v", err)
@@ -59,16 +67,31 @@ func (m *CockroachMigration) FromUnstructured(obj *unstructured.Unstructured) er
 	return nil
 }
 
-func (db *CockroachMigration) GetName() string {
-	return db.Name
+func (m *CockroachMigration) GetName() string {
+	return m.Name
 }
 
-var CockroachMigrationSchema = schema.GroupVersionResource{
-	Group:    "ponglehub.co.uk",
-	Version:  "v1alpha1",
-	Resource: "cockroachmigrations",
+func (m *CockroachMigration) GetUID() string {
+	return m.UID
+}
+
+func (m *CockroachMigration) GetResourceVersion() string {
+	return m.ResourceVersion
+}
+
+func (m *CockroachMigration) Equal(obj CockroachMigration) bool {
+	return m.CockroachMigrationComparable == obj.CockroachMigrationComparable
 }
 
 func NewCockroachMigrationClient(namespace string) (*k8s_generic.Client[CockroachMigration, *CockroachMigration], error) {
-	return k8s_generic.New[CockroachMigration](CockroachMigrationSchema, namespace, nil)
+	return k8s_generic.New[CockroachMigration](
+		schema.GroupVersionResource{
+			Group:    "ponglehub.co.uk",
+			Version:  "v1alpha1",
+			Resource: "cockroachmigrations",
+		},
+		"CockroachMigration",
+		namespace,
+		nil,
+	)
 }

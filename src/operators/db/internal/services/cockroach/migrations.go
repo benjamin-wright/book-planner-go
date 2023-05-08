@@ -37,7 +37,7 @@ func NewMigrations(deployment string, namespace string, database string) (*Migra
 
 func (c *MigrationsClient) Stop() {
 	zap.S().Infof("Closing connection to DB %s[%s]", c.deployment, c.database)
-	c.conn.Close(context.Background())
+	c.conn.Close(context.TODO())
 }
 
 func (c *MigrationsClient) HasMigrationsTable() (bool, error) {
@@ -55,17 +55,9 @@ func (d *MigrationsClient) CreateMigrationsTable() error {
 	_, err := d.conn.Exec(
 		context.TODO(),
 		`
-			BEGIN;
-
-			SAVEPOINT migration_restart;
-
 			CREATE TABLE migrations (
 				id INT PRIMARY KEY NOT NULL UNIQUE
 			);
-
-			RELEASE SAVEPOINT migration_restart;
-
-			COMMIT;
 		`,
 	)
 
@@ -73,7 +65,7 @@ func (d *MigrationsClient) CreateMigrationsTable() error {
 }
 
 func (c *MigrationsClient) AppliedMigrations() ([]Migration, error) {
-	rows, err := c.conn.Query(context.Background(), "SELECT id FROM migrations")
+	rows, err := c.conn.Query(context.TODO(), "SELECT id FROM migrations")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get migration ids: %+v", err)
 	}
@@ -104,7 +96,7 @@ func (c *MigrationsClient) RunMigration(index int64, query string) error {
 		return fmt.Errorf("failed to run migration: %+v", err)
 	}
 
-	_, err = c.conn.Exec(context.Background(), "INSERT INTO migrations (id) VALUES ($1)", index)
+	_, err = c.conn.Exec(context.TODO(), "INSERT INTO migrations (id) VALUES ($1)", index)
 	if err != nil {
 		return fmt.Errorf("failed to update migrations table: %+v", err)
 	}

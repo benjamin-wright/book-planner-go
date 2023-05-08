@@ -10,11 +10,17 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type CockroachSecret struct {
+type CockroachSecretComparable struct {
 	Name     string
 	DB       string
 	Database string
 	User     string
+}
+
+type CockroachSecret struct {
+	CockroachSecretComparable
+	UID             string
+	ResourceVersion string
 }
 
 func encode(format string, args ...interface{}) string {
@@ -31,7 +37,8 @@ func (s *CockroachSecret) ToUnstructured(namespace string) *unstructured.Unstruc
 			"metadata": map[string]interface{}{
 				"name": s.Name,
 				"labels": k8s_generic.Merge(map[string]interface{}{
-					"app": s.Name,
+					"app":                           s.Name,
+					"ponglehub.co.uk/resource-type": "cockroachdb",
 				}, LABEL_FILTERS),
 			},
 			"data": map[string]interface{}{
@@ -48,6 +55,9 @@ func (s *CockroachSecret) ToUnstructured(namespace string) *unstructured.Unstruc
 
 func (s *CockroachSecret) FromUnstructured(obj *unstructured.Unstructured) error {
 	s.Name = obj.GetName()
+
+	s.UID = string(obj.GetUID())
+	s.ResourceVersion = obj.GetResourceVersion()
 
 	hostname, err := k8s_generic.GetEncodedProperty(obj, "data", "POSTGRES_HOST")
 	if err != nil {
@@ -72,12 +82,29 @@ func (s *CockroachSecret) GetName() string {
 	return s.Name
 }
 
-var CockroachSecretSchema = schema.GroupVersionResource{
-	Group:    "",
-	Version:  "v1",
-	Resource: "secrets",
+func (s *CockroachSecret) GetUID() string {
+	return s.UID
+}
+
+func (s *CockroachSecret) GetResourceVersion() string {
+	return s.ResourceVersion
+}
+
+func (s *CockroachSecret) Equal(obj CockroachSecret) bool {
+	return s.CockroachSecretComparable == obj.CockroachSecretComparable
 }
 
 func NewCockroachSecretClient(namespace string) (*k8s_generic.Client[CockroachSecret, *CockroachSecret], error) {
-	return k8s_generic.New[CockroachSecret](CockroachSecretSchema, namespace, LABEL_FILTERS)
+	return k8s_generic.New[CockroachSecret](
+		schema.GroupVersionResource{
+			Group:    "",
+			Version:  "v1",
+			Resource: "secrets",
+		},
+		"Secret",
+		namespace,
+		k8s_generic.Merge(map[string]interface{}{
+			"ponglehub.co.uk/resource-type": "cockroachdb",
+		}, LABEL_FILTERS),
+	)
 }

@@ -60,6 +60,11 @@ func main() {
 		zap.S().Fatalf("Failed to get client for redis dbs: %+v", err)
 	}
 
+	rcClient, err := crds.NewRedisClientClient(namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to get client for redis clients: %+v", err)
+	}
+
 	rssClient, err := resources.NewRedisStatefulSetClient(namespace)
 	if err != nil {
 		zap.S().Fatalf("Failed to get client for redis stateful sets: %+v", err)
@@ -75,11 +80,16 @@ func main() {
 		zap.S().Fatalf("Failed to get client for redis services: %+v", err)
 	}
 
+	rsecretClient, err := resources.NewRedisSecretClient(namespace)
+	if err != nil {
+		zap.S().Fatalf("Failed to get client for redis secrets: %+v", err)
+	}
+
 	m, err := manager.New(namespace,
 		cdbClient, ccClient, cmClient,
 		cssClient, cpvcClient, csvcClient, csecretClient,
-		rdbClient,
-		rssClient, rpvcClient, rsvcClient,
+		rdbClient, rcClient,
+		rssClient, rpvcClient, rsvcClient, rsecretClient,
 		time.Second*5,
 	)
 	if err != nil {

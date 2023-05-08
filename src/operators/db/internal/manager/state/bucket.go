@@ -5,16 +5,16 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type nameable[T comparable] interface {
+type nameable[T any] interface {
 	*T
 	GetName() string
 }
 
-type bucket[T comparable, PT nameable[T]] struct {
+type bucket[T any, PT nameable[T]] struct {
 	state map[string]T
 }
 
-func newBucket[T comparable, PT nameable[T]]() bucket[T, PT] {
+func newBucket[T any, PT nameable[T]]() bucket[T, PT] {
 	return bucket[T, PT]{
 		state: map[string]T{},
 	}

@@ -66,8 +66,10 @@ func TestCockroachIntegration(t *testing.T) {
 	}
 
 	err = cdbs.Create(context.Background(), crds.CockroachDB{
-		Name:    "random-db",
-		Storage: "256Mi",
+		CockroachDBComparable: crds.CockroachDBComparable{
+			Name:    "different-db",
+			Storage: "256Mi",
+		},
 	})
 	if err != nil {
 		t.Logf("failed to create test db: %+v", err)
@@ -75,11 +77,13 @@ func TestCockroachIntegration(t *testing.T) {
 	}
 
 	err = cclients.Create(context.Background(), crds.CockroachClient{
-		Deployment: "random-db",
-		Database:   "new_db",
-		Name:       "my-client",
-		Username:   "my_user",
-		Secret:     "my-secret",
+		CockroachClientComparable: crds.CockroachClientComparable{
+			Deployment: "different-db",
+			Database:   "new_db",
+			Name:       "my-client",
+			Username:   "my_user",
+			Secret:     "my-secret",
+		},
 	})
 	if err != nil {
 		t.Logf("failed to create test client: %+v", err)
@@ -87,15 +91,17 @@ func TestCockroachIntegration(t *testing.T) {
 	}
 
 	err = cms.Create(context.Background(), crds.CockroachMigration{
-		Name:       "mig1",
-		Deployment: "random-db",
-		Database:   "new_db",
-		Migration: `
-			CREATE TABLE hithere (
-				id INT PRIMARY KEY NOT NULL UNIQUE
-			);
-		`,
-		Index: 1,
+		CockroachMigrationComparable: crds.CockroachMigrationComparable{
+			Name:       "mig1",
+			Deployment: "random-db",
+			Database:   "new_db",
+			Migration: `
+				CREATE TABLE hithere (
+					id INT PRIMARY KEY NOT NULL UNIQUE
+				);
+			`,
+			Index: 1,
+		},
 	})
 	if err != nil {
 		t.Logf("failed to create test migration: %+v", err)
@@ -103,14 +109,23 @@ func TestCockroachIntegration(t *testing.T) {
 	}
 }
 
-func makeRedisClients(t *testing.T, namespace string) *k8s_generic.Client[crds.RedisDB, *crds.RedisDB] {
+func makeRedisClients(t *testing.T, namespace string) (
+	*k8s_generic.Client[crds.RedisDB, *crds.RedisDB],
+	*k8s_generic.Client[crds.RedisClient, *crds.RedisClient],
+) {
 	rdbs, err := crds.NewRedisDBClient(namespace)
 	if err != nil {
 		t.Logf("failed to create rdb client: %+v", err)
 		t.FailNow()
 	}
 
-	return rdbs
+	rcs, err := crds.NewRedisClientClient(namespace)
+	if err != nil {
+		t.Logf("failed to create rcs client: %+v", err)
+		t.FailNow()
+	}
+
+	return rdbs, rcs
 }
 
 func TestRedisIntegration(t *testing.T) {
@@ -120,7 +135,7 @@ func TestRedisIntegration(t *testing.T) {
 
 	namespace := os.Getenv("NAMESPACE")
 
-	rdbs := makeRedisClients(t, namespace)
+	rdbs, rcs := makeRedisClients(t, namespace)
 
 	err := rdbs.DeleteAll(context.Background())
 	if err != nil {
@@ -129,11 +144,26 @@ func TestRedisIntegration(t *testing.T) {
 	}
 
 	err = rdbs.Create(context.Background(), crds.RedisDB{
-		Name:    "redis-db",
-		Storage: "256Mi",
+		RedisDBComparable: crds.RedisDBComparable{
+			Name:    "redis-db",
+			Storage: "256Mi",
+		},
 	})
 	if err != nil {
 		t.Logf("failed to create test db: %+v", err)
+		t.FailNow()
+	}
+
+	err = rcs.Create(context.Background(), crds.RedisClient{
+		RedisClientComparable: crds.RedisClientComparable{
+			Name:       "my-secret",
+			Deployment: "redis-db",
+			Unit:       1,
+			Secret:     "rdb-secret",
+		},
+	})
+	if err != nil {
+		t.Logf("failed to create test client: %+v", err)
 		t.FailNow()
 	}
 }

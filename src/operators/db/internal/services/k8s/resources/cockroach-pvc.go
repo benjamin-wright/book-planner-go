@@ -8,10 +8,16 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type CockroachPVC struct {
+type CockroachPVCComparable struct {
 	Name     string
 	Database string
 	Storage  string
+}
+
+type CockroachPVC struct {
+	CockroachPVCComparable
+	UID             string
+	ResourceVersion string
 }
 
 func (p *CockroachPVC) ToUnstructured(namespace string) *unstructured.Unstructured {
@@ -26,6 +32,9 @@ func (p *CockroachPVC) FromUnstructured(obj *unstructured.Unstructured) error {
 	var err error
 
 	p.Name = obj.GetName()
+	p.UID = string(obj.GetUID())
+	p.ResourceVersion = obj.GetResourceVersion()
+
 	p.Storage, err = k8s_generic.GetProperty[string](obj, "spec", "resources", "requests", "storage")
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %+v", err)
@@ -39,19 +48,30 @@ func (p *CockroachPVC) FromUnstructured(obj *unstructured.Unstructured) error {
 	return nil
 }
 
-func (db *CockroachPVC) GetName() string {
-	return db.Name
+func (p *CockroachPVC) GetName() string {
+	return p.Name
 }
 
-var CockroachPVCSchema = schema.GroupVersionResource{
-	Group:    "",
-	Version:  "v1",
-	Resource: "persistentvolumeclaims",
+func (p *CockroachPVC) GetUID() string {
+	return p.UID
+}
+
+func (p *CockroachPVC) GetResourceVersion() string {
+	return p.ResourceVersion
+}
+
+func (p *CockroachPVC) Equal(obj CockroachPVC) bool {
+	return p.CockroachPVCComparable == obj.CockroachPVCComparable
 }
 
 func NewCockroachPVCClient(namespace string) (*k8s_generic.Client[CockroachPVC, *CockroachPVC], error) {
 	return k8s_generic.New[CockroachPVC](
-		CockroachPVCSchema,
+		schema.GroupVersionResource{
+			Group:    "",
+			Version:  "v1",
+			Resource: "persistentvolumeclaims",
+		},
+		"PersistentVolumeClaim",
 		namespace,
 		k8s_generic.Merge(map[string]interface{}{
 			"ponglehub.co.uk/resource-type": "cockroachdb",

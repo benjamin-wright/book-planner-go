@@ -6,8 +6,14 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type CockroachService struct {
+type CockroachServiceComparable struct {
 	Name string
+}
+
+type CockroachService struct {
+	CockroachServiceComparable
+	UID             string
+	ResourceVersion string
 }
 
 func (s *CockroachService) ToUnstructured(namespace string) *unstructured.Unstructured {
@@ -43,6 +49,8 @@ func (s *CockroachService) ToUnstructured(namespace string) *unstructured.Unstru
 
 func (s *CockroachService) FromUnstructured(obj *unstructured.Unstructured) error {
 	s.Name = obj.GetName()
+	s.UID = string(obj.GetUID())
+	s.ResourceVersion = obj.GetResourceVersion()
 	return nil
 }
 
@@ -50,15 +58,26 @@ func (s *CockroachService) GetName() string {
 	return s.Name
 }
 
-var CockroachServiceSchema = schema.GroupVersionResource{
-	Group:    "",
-	Version:  "v1",
-	Resource: "services",
+func (s *CockroachService) GetUID() string {
+	return s.UID
+}
+
+func (s *CockroachService) GetResourceVersion() string {
+	return s.ResourceVersion
+}
+
+func (s *CockroachService) Equal(obj CockroachService) bool {
+	return s.CockroachServiceComparable == obj.CockroachServiceComparable
 }
 
 func NewCockroachServiceClient(namespace string) (*k8s_generic.Client[CockroachService, *CockroachService], error) {
 	return k8s_generic.New[CockroachService](
-		CockroachServiceSchema,
+		schema.GroupVersionResource{
+			Group:    "",
+			Version:  "v1",
+			Resource: "services",
+		},
+		"Service",
 		namespace,
 		k8s_generic.Merge(map[string]interface{}{
 			"ponglehub.co.uk/resource-type": "cockroachdb",

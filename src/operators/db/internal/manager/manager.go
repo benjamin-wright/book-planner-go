@@ -23,9 +23,11 @@ type clients struct {
 	csvcs       K8sClient[resources.CockroachService]
 	csecrets    K8sClient[resources.CockroachSecret]
 	rdbs        K8sClient[crds.RedisDB]
+	rclients    K8sClient[crds.RedisClient]
 	rsss        K8sClient[resources.RedisStatefulSet]
 	rpvcs       K8sClient[resources.RedisPVC]
 	rsvcs       K8sClient[resources.RedisService]
+	rsecrets    K8sClient[resources.RedisSecret]
 }
 
 type streams struct {
@@ -37,9 +39,11 @@ type streams struct {
 	csvcs       <-chan k8s_generic.Update[resources.CockroachService]
 	csecrets    <-chan k8s_generic.Update[resources.CockroachSecret]
 	rdbs        <-chan k8s_generic.Update[crds.RedisDB]
+	rclients    <-chan k8s_generic.Update[crds.RedisClient]
 	rsss        <-chan k8s_generic.Update[resources.RedisStatefulSet]
 	rpvcs       <-chan k8s_generic.Update[resources.RedisPVC]
 	rsvcs       <-chan k8s_generic.Update[resources.RedisService]
+	rsecrets    <-chan k8s_generic.Update[resources.RedisSecret]
 }
 
 type Manager struct {
@@ -52,11 +56,12 @@ type Manager struct {
 	debouncer utils.Debouncer
 }
 
-type K8sClient[T comparable] interface {
+type K8sClient[T any] interface {
 	Watch(ctx context.Context, cancel context.CancelFunc) (<-chan k8s_generic.Update[T], error)
 	Create(ctx context.Context, resource T) error
 	Delete(ctx context.Context, name string) error
 	Update(ctx context.Context, resource T) error
+	Event(ctx context.Context, obj T, eventtype, reason, message string)
 }
 
 type CockroachClient interface {
@@ -73,9 +78,11 @@ func New(
 	csvcClient K8sClient[resources.CockroachService],
 	csecretClient K8sClient[resources.CockroachSecret],
 	rdbClient K8sClient[crds.RedisDB],
+	rcClient K8sClient[crds.RedisClient],
 	rssClient K8sClient[resources.RedisStatefulSet],
 	rpvcClient K8sClient[resources.RedisPVC],
 	rsvcClient K8sClient[resources.RedisService],
+	rsecretClient K8sClient[resources.RedisSecret],
 	debouncer time.Duration,
 ) (*Manager, error) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -89,9 +96,11 @@ func New(
 		csvcs:       csvcClient,
 		csecrets:    csecretClient,
 		rdbs:        rdbClient,
+		rclients:    rcClient,
 		rsss:        rssClient,
 		rpvcs:       rpvcClient,
 		rsvcs:       rsvcClient,
+		rsecrets:    rsecretClient,
 	}
 
 	cdbs, err := clients.cdbs.Watch(ctx, cancel)
@@ -134,6 +143,11 @@ func New(
 		return nil, fmt.Errorf("failed to watch redis dbs: %+v", err)
 	}
 
+	rclients, err := clients.rclients.Watch(ctx, cancel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to watch redis clients: %+v", err)
+	}
+
 	rsss, err := clients.rsss.Watch(ctx, cancel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to watch redis stateful sets: %+v", err)
@@ -149,6 +163,11 @@ func New(
 		return nil, fmt.Errorf("failed to watch redis services: %+v", err)
 	}
 
+	rsecrets, err := clients.rsecrets.Watch(ctx, cancel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to watch redis secrets: %+v", err)
+	}
+
 	streams := streams{
 		cdbs:        cdbs,
 		cclients:    cclients,
@@ -158,9 +177,11 @@ func New(
 		csvcs:       csvcs,
 		csecrets:    csecrets,
 		rdbs:        rdbs,
+		rclients:    rclients,
 		rsss:        rsss,
 		rpvcs:       rpvcs,
 		rsvcs:       rsvcs,
+		rsecrets:    rsecrets,
 	}
 
 	return &Manager{
@@ -208,6 +229,9 @@ func (m *Manager) refresh() {
 	case update := <-m.streams.rdbs:
 		m.state.Apply(update)
 		m.debouncer.Trigger()
+	case update := <-m.streams.rclients:
+		m.state.Apply(update)
+		m.debouncer.Trigger()
 	case update := <-m.streams.csss:
 		m.state.Apply(update)
 		m.debouncer.Trigger()
@@ -232,6 +256,9 @@ func (m *Manager) refresh() {
 	case update := <-m.streams.rsvcs:
 		m.state.Apply(update)
 		m.debouncer.Trigger()
+	case update := <-m.streams.rsecrets:
+		m.state.Apply(update)
+		m.debouncer.Trigger()
 	case <-m.debouncer.Wait():
 		zap.S().Infof("Database state update")
 		m.state.RefreshCockroach(m.namespace)
@@ -240,6 +267,7 @@ func (m *Manager) refresh() {
 		m.processCockroachClients()
 		m.processCockroachMigrations()
 		m.processRedisDBs()
+		m.processRedisClients()
 		zap.S().Infof("Processing Done")
 	}
 }
@@ -250,8 +278,8 @@ func (m *Manager) processCockroachDBs() {
 	pvcsToRemove := m.state.GetCPVCDemand()
 
 	for _, db := range ssDemand.ToRemove {
-		zap.S().Infof("Deleting db: %s", db.Name)
-		err := m.clients.csss.Delete(m.ctx, db.Name)
+		zap.S().Infof("Deleting db: %s", db.Target.Name)
+		err := m.clients.csss.Delete(m.ctx, db.Target.Name)
 
 		if err != nil {
 			zap.S().Errorf("Failed to delete cockroachdb stateful set: %+v", err)
@@ -259,8 +287,8 @@ func (m *Manager) processCockroachDBs() {
 	}
 
 	for _, svc := range svcDemand.ToRemove {
-		zap.S().Infof("Deleting service: %s", svc.Name)
-		err := m.clients.csvcs.Delete(m.ctx, svc.Name)
+		zap.S().Infof("Deleting service: %s", svc.Target.Name)
+		err := m.clients.csvcs.Delete(m.ctx, svc.Target.Name)
 
 		if err != nil {
 			zap.S().Errorf("Failed to delete cockroachdb service: %+v", err)
@@ -277,17 +305,19 @@ func (m *Manager) processCockroachDBs() {
 	}
 
 	for _, db := range ssDemand.ToAdd {
-		zap.S().Infof("Creating db: %s", db.Name)
-		err := m.clients.csss.Create(m.ctx, db)
-
+		zap.S().Infof("Creating db: %s", db.Target.Name)
+		err := m.clients.csss.Create(m.ctx, db.Target)
 		if err != nil {
 			zap.S().Errorf("Failed to create cockroachdb stateful set: %+v", err)
+			m.clients.cdbs.Event(m.ctx, db.Parent, "Normal", "ProvisioningSucceeded", fmt.Sprintf("Failed to create stateful set: %s", err.Error()))
+		} else {
+			m.clients.cdbs.Event(m.ctx, db.Parent, "Normal", "ProvisioningSucceeded", "Created stateful set")
 		}
 	}
 
 	for _, svc := range svcDemand.ToAdd {
-		zap.S().Infof("Creating service: %s", svc.Name)
-		err := m.clients.csvcs.Create(m.ctx, svc)
+		zap.S().Infof("Creating service: %s", svc.Target.Name)
+		err := m.clients.csvcs.Create(m.ctx, svc.Target)
 
 		if err != nil {
 			zap.S().Errorf("Failed to create cockroachdb service: %+v", err)
@@ -303,29 +333,29 @@ func (m *Manager) processCockroachClients() {
 
 	dbs := map[string]struct{}{}
 	for _, db := range dbDemand.ToAdd {
-		dbs[db.DB] = struct{}{}
+		dbs[db.Target.DB] = struct{}{}
 	}
 	for _, db := range dbDemand.ToRemove {
-		dbs[db.DB] = struct{}{}
+		dbs[db.Target.DB] = struct{}{}
 	}
 	for _, user := range userDemand.ToAdd {
-		dbs[user.DB] = struct{}{}
+		dbs[user.Target.DB] = struct{}{}
 	}
 	for _, user := range userDemand.ToRemove {
-		dbs[user.DB] = struct{}{}
+		dbs[user.Target.DB] = struct{}{}
 	}
 	for _, perm := range permsDemand.ToAdd {
-		dbs[perm.DB] = struct{}{}
+		dbs[perm.Target.DB] = struct{}{}
 	}
 	for _, perm := range permsDemand.ToRemove {
-		dbs[perm.DB] = struct{}{}
+		dbs[perm.Target.DB] = struct{}{}
 	}
 
 	for _, secret := range secretsDemand.ToRemove {
-		zap.S().Infof("Removing secret %s", secret.Name)
-		err := m.clients.csecrets.Delete(m.ctx, secret.Name)
+		zap.S().Infof("Removing secret %s", secret.Target.Name)
+		err := m.clients.csecrets.Delete(m.ctx, secret.Target.Name)
 		if err != nil {
-			zap.S().Errorf("Failed to delete secret %s: %+v", secret.Name, err)
+			zap.S().Errorf("Failed to delete secret %s: %+v", secret.Target.Name, err)
 		}
 	}
 
@@ -338,74 +368,74 @@ func (m *Manager) processCockroachClients() {
 		defer cli.Stop()
 
 		for _, perm := range permsDemand.ToRemove {
-			if perm.DB != database {
+			if perm.Target.DB != database {
 				continue
 			}
 
-			zap.S().Infof("Dropping permission for user %s in database %s of db %s", perm.User, perm.Database, perm.DB)
-			err = cli.RevokePermission(perm)
+			zap.S().Infof("Dropping permission for user %s in database %s of db %s", perm.Target.User, perm.Target.Database, perm.Target.DB)
+			err = cli.RevokePermission(perm.Target)
 			if err != nil {
 				zap.S().Errorf("Failed to revoke permission: %+v", err)
 			}
 		}
 
 		for _, db := range dbDemand.ToRemove {
-			if db.DB != database {
+			if db.Target.DB != database {
 				continue
 			}
 
-			zap.S().Infof("Dropping database %s in db %s", db.Name, db.DB)
-			err = cli.DeleteDB(db)
+			zap.S().Infof("Dropping database %s in db %s", db.Target.Name, db.Target.DB)
+			err = cli.DeleteDB(db.Target)
 			if err != nil {
 				zap.S().Errorf("Failed to delete database: %+v", err)
 			}
 		}
 
 		for _, user := range userDemand.ToRemove {
-			if user.DB != database {
+			if user.Target.DB != database {
 				continue
 			}
 
-			zap.S().Infof("Dropping user %s in db %s", user.Name, user.DB)
-			err = cli.DeleteUser(user)
+			zap.S().Infof("Dropping user %s in db %s", user.Target.Name, user.Target.DB)
+			err = cli.DeleteUser(user.Target)
 			if err != nil {
 				zap.S().Errorf("Failed to delete user: %+v", err)
 			}
 		}
 
 		for _, db := range dbDemand.ToAdd {
-			if db.DB != database {
+			if db.Target.DB != database {
 				continue
 			}
 
-			zap.S().Infof("Creating database %s in db %s", db.Name, db.DB)
+			zap.S().Infof("Creating database %s in db %s", db.Target.Name, db.Target.DB)
 
-			err := cli.CreateDB(db)
+			err := cli.CreateDB(db.Target)
 			if err != nil {
 				zap.S().Errorf("Failed to create database: %+v", err)
 			}
 		}
 
 		for _, user := range userDemand.ToAdd {
-			if user.DB != database {
+			if user.Target.DB != database {
 				continue
 			}
 
-			zap.S().Infof("Creating user %s in db %s", user.Name, user.DB)
+			zap.S().Infof("Creating user %s in db %s", user.Target.Name, user.Target.DB)
 
-			err := cli.CreateUser(user)
+			err := cli.CreateUser(user.Target)
 			if err != nil {
 				zap.S().Errorf("Failed to create user: %+v", err)
 			}
 		}
 
 		for _, perm := range permsDemand.ToAdd {
-			if perm.DB != database {
+			if perm.Target.DB != database {
 				continue
 			}
 
-			zap.S().Infof("Adding permission for user %s in database %s of db %s", perm.User, perm.Database, perm.DB)
-			err := cli.GrantPermission(perm)
+			zap.S().Infof("Adding permission for user %s in database %s of db %s", perm.Target.User, perm.Target.Database, perm.Target.DB)
+			err := cli.GrantPermission(perm.Target)
 			if err != nil {
 				zap.S().Errorf("Failed to grant permission: %+v", err)
 			}
@@ -413,10 +443,10 @@ func (m *Manager) processCockroachClients() {
 	}
 
 	for _, secret := range secretsDemand.ToAdd {
-		zap.S().Infof("Adding secret %s", secret.Name)
-		err := m.clients.csecrets.Create(m.ctx, secret)
+		zap.S().Infof("Adding secret %s", secret.Target.Name)
+		err := m.clients.csecrets.Create(m.ctx, secret.Target)
 		if err != nil {
-			zap.S().Errorf("Failed to create secret %s: %+v", secret.Name, err)
+			zap.S().Errorf("Failed to create secret %s: %+v", secret.Target.Name, err)
 		}
 	}
 }
@@ -426,12 +456,27 @@ func (m *Manager) processCockroachMigrations() {
 
 	for _, deployment := range demand.GetDBs() {
 		for _, database := range demand.GetDatabases(deployment) {
+			if !demand.Next(deployment, database) {
+				continue
+			}
+
 			client, err := cockroach.NewMigrations(deployment, m.namespace, database)
 			if err != nil {
 				zap.S().Errorf("Failed to create migrations client: %+v", err)
 				continue
 			}
 			defer client.Stop()
+
+			if ok, err := client.HasMigrationsTable(); err != nil {
+				zap.S().Errorf("Failed to check for existing migrations table in %s: %+v", database, err)
+				continue
+			} else if !ok {
+				err = client.CreateMigrationsTable()
+				if err != nil {
+					zap.S().Errorf("Failed to get create migrations table %s: %+v", database, err)
+					continue
+				}
+			}
 
 			for demand.Next(deployment, database) {
 				migration, index := demand.GetNextMigration(deployment, database)
@@ -454,8 +499,8 @@ func (m *Manager) processRedisDBs() {
 	pvcsToRemove := m.state.GetRPVCDemand()
 
 	for _, db := range ssDemand.ToRemove {
-		zap.S().Infof("Deleting db: %s", db.Name)
-		err := m.clients.rsss.Delete(m.ctx, db.Name)
+		zap.S().Infof("Deleting db: %s", db.Target.Name)
+		err := m.clients.rsss.Delete(m.ctx, db.Target.Name)
 
 		if err != nil {
 			zap.S().Errorf("Failed to delete redis stateful set: %+v", err)
@@ -463,8 +508,8 @@ func (m *Manager) processRedisDBs() {
 	}
 
 	for _, svc := range svcDemand.ToRemove {
-		zap.S().Infof("Deleting service: %s", svc.Name)
-		err := m.clients.rsvcs.Delete(m.ctx, svc.Name)
+		zap.S().Infof("Deleting service: %s", svc.Target.Name)
+		err := m.clients.rsvcs.Delete(m.ctx, svc.Target.Name)
 
 		if err != nil {
 			zap.S().Errorf("Failed to delete redis service: %+v", err)
@@ -481,8 +526,8 @@ func (m *Manager) processRedisDBs() {
 	}
 
 	for _, db := range ssDemand.ToAdd {
-		zap.S().Infof("Creating db: %s", db.Name)
-		err := m.clients.rsss.Create(m.ctx, db)
+		zap.S().Infof("Creating db: %s", db.Target.Name)
+		err := m.clients.rsss.Create(m.ctx, db.Target)
 
 		if err != nil {
 			zap.S().Errorf("Failed to create redis stateful set: %+v", err)
@@ -490,11 +535,31 @@ func (m *Manager) processRedisDBs() {
 	}
 
 	for _, svc := range svcDemand.ToAdd {
-		zap.S().Infof("Creating service: %s", svc.Name)
-		err := m.clients.rsvcs.Create(m.ctx, svc)
+		zap.S().Infof("Creating service: %s", svc.Target.Name)
+		err := m.clients.rsvcs.Create(m.ctx, svc.Target)
 
 		if err != nil {
 			zap.S().Errorf("Failed to create redis service: %+v", err)
+		}
+	}
+}
+
+func (m *Manager) processRedisClients() {
+	secretsDemand := m.state.GetRSecretsDemand()
+
+	for _, secret := range secretsDemand.ToRemove {
+		zap.S().Infof("Removing secret %s", secret.Target.Name)
+		err := m.clients.rsecrets.Delete(m.ctx, secret.Target.Name)
+		if err != nil {
+			zap.S().Errorf("Failed to delete secret %s: %+v", secret.Target.Name, err)
+		}
+	}
+
+	for _, secret := range secretsDemand.ToAdd {
+		zap.S().Infof("Adding secret %s", secret.Target.Name)
+		err := m.clients.rsecrets.Create(m.ctx, secret.Target)
+		if err != nil {
+			zap.S().Errorf("Failed to create secret %s: %+v", secret.Target.Name, err)
 		}
 	}
 }

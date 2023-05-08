@@ -8,32 +8,30 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type CockroachClientComparable struct {
+type RedisClientComparable struct {
 	Name       string
 	Deployment string
-	Database   string
-	Username   string
+	Unit       int64
 	Secret     string
 }
 
-type CockroachClient struct {
-	CockroachClientComparable
+type RedisClient struct {
+	RedisClientComparable
 	UID             string
 	ResourceVersion string
 }
 
-func (cli *CockroachClient) ToUnstructured(namespace string) *unstructured.Unstructured {
+func (cli *RedisClient) ToUnstructured(namespace string) *unstructured.Unstructured {
 	result := &unstructured.Unstructured{}
 	result.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "ponglehub.co.uk/v1alpha1",
-		"kind":       "CockroachClient",
+		"kind":       "RedisClient",
 		"metadata": map[string]interface{}{
 			"name": cli.Name,
 		},
 		"spec": map[string]interface{}{
 			"deployment": cli.Deployment,
-			"database":   cli.Database,
-			"username":   cli.Username,
+			"unit":       cli.Unit,
 			"secret":     cli.Secret,
 		},
 	})
@@ -41,7 +39,7 @@ func (cli *CockroachClient) ToUnstructured(namespace string) *unstructured.Unstr
 	return result
 }
 
-func (cli *CockroachClient) FromUnstructured(obj *unstructured.Unstructured) error {
+func (cli *RedisClient) FromUnstructured(obj *unstructured.Unstructured) error {
 	var err error
 	cli.Name = obj.GetName()
 	cli.UID = string(obj.GetUID())
@@ -57,14 +55,9 @@ func (cli *CockroachClient) FromUnstructured(obj *unstructured.Unstructured) err
 		return fmt.Errorf("failed to get deployment: %+v", err)
 	}
 
-	cli.Database, err = k8s_generic.GetProperty[string](obj, "spec", "database")
+	cli.Unit, err = k8s_generic.GetProperty[int64](obj, "spec", "unit")
 	if err != nil {
-		return fmt.Errorf("failed to get database: %+v", err)
-	}
-
-	cli.Username, err = k8s_generic.GetProperty[string](obj, "spec", "username")
-	if err != nil {
-		return fmt.Errorf("failed to get username: %+v", err)
+		return fmt.Errorf("failed to get unit: %+v", err)
 	}
 
 	cli.Secret, err = k8s_generic.GetProperty[string](obj, "spec", "secret")
@@ -75,34 +68,34 @@ func (cli *CockroachClient) FromUnstructured(obj *unstructured.Unstructured) err
 	return nil
 }
 
-func (cli *CockroachClient) GetName() string {
+func (cli *RedisClient) GetName() string {
 	return cli.Name
 }
 
-func (cli *CockroachClient) GetUID() string {
+func (cli *RedisClient) GetUID() string {
 	return cli.UID
 }
 
-func (cli *CockroachClient) GetResourceVersion() string {
+func (cli *RedisClient) GetResourceVersion() string {
 	return cli.ResourceVersion
 }
 
-func (cli *CockroachClient) GetTarget() string {
+func (cli *RedisClient) GetTarget() string {
 	return cli.Deployment
 }
 
-func (cli *CockroachClient) Equal(obj CockroachClient) bool {
-	return cli.CockroachClientComparable == obj.CockroachClientComparable
+func (cli *RedisClient) Equal(obj RedisClient) bool {
+	return cli.RedisClientComparable == obj.RedisClientComparable
 }
 
-func NewCockroachClientClient(namespace string) (*k8s_generic.Client[CockroachClient, *CockroachClient], error) {
-	return k8s_generic.New[CockroachClient](
+func NewRedisClientClient(namespace string) (*k8s_generic.Client[RedisClient, *RedisClient], error) {
+	return k8s_generic.New[RedisClient](
 		schema.GroupVersionResource{
 			Group:    "ponglehub.co.uk",
 			Version:  "v1alpha1",
-			Resource: "cockroachclients",
+			Resource: "redisclients",
 		},
-		"CockroachClient",
+		"RedisClient",
 		namespace,
 		nil,
 	)

@@ -8,10 +8,16 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type RedisStatefulSet struct {
+type RedisStatefulSetComparable struct {
 	Name    string
 	Storage string
 	Ready   bool
+}
+
+type RedisStatefulSet struct {
+	RedisStatefulSetComparable
+	UID             string
+	ResourceVersion string
 }
 
 func (s *RedisStatefulSet) ToUnstructured(namespace string) *unstructured.Unstructured {
@@ -120,6 +126,9 @@ func (s *RedisStatefulSet) FromUnstructured(obj *unstructured.Unstructured) erro
 	var err error
 
 	s.Name = obj.GetName()
+	s.UID = string(obj.GetUID())
+	s.ResourceVersion = obj.GetResourceVersion()
+
 	s.Storage, err = k8s_generic.GetProperty[string](obj, "spec", "volumeClaimTemplates", "0", "spec", "resources", "requests", "storage")
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %+v", err)
@@ -144,6 +153,14 @@ func (db *RedisStatefulSet) GetName() string {
 	return db.Name
 }
 
+func (db *RedisStatefulSet) GetUID() string {
+	return db.UID
+}
+
+func (db *RedisStatefulSet) GetResourceVersion() string {
+	return db.ResourceVersion
+}
+
 func (db *RedisStatefulSet) GetStorage() string {
 	return db.Storage
 }
@@ -152,15 +169,18 @@ func (db *RedisStatefulSet) IsReady() bool {
 	return db.Ready
 }
 
-var RedisStatefulSetSchema = schema.GroupVersionResource{
-	Group:    "apps",
-	Version:  "v1",
-	Resource: "statefulsets",
+func (db *RedisStatefulSet) Equal(obj RedisStatefulSet) bool {
+	return db.RedisStatefulSetComparable == obj.RedisStatefulSetComparable
 }
 
 func NewRedisStatefulSetClient(namespace string) (*k8s_generic.Client[RedisStatefulSet, *RedisStatefulSet], error) {
 	return k8s_generic.New[RedisStatefulSet](
-		RedisStatefulSetSchema,
+		schema.GroupVersionResource{
+			Group:    "apps",
+			Version:  "v1",
+			Resource: "statefulsets",
+		},
+		"StatefulSet",
 		namespace,
 		k8s_generic.Merge(map[string]interface{}{
 			"ponglehub.co.uk/resource-type": "redis",

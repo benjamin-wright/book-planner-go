@@ -1,11 +1,11 @@
-package manager
+package state
 
-type demand[T any] struct {
-	toAdd    []T
-	toRemove []T
+type Demand[T any] struct {
+	ToAdd    []T
+	ToRemove []T
 }
 
-func getOneForOneDemand[T any, U any](state map[string]T, existing map[string]U, transform func(T) U) demand[U] {
+func getOneForOneDemand[T any, U any](state map[string]T, existing map[string]U, transform func(T) U) Demand[U] {
 	toAdd := []U{}
 	toRemove := []U{}
 
@@ -21,9 +21,9 @@ func getOneForOneDemand[T any, U any](state map[string]T, existing map[string]U,
 		}
 	}
 
-	return demand[U]{
-		toAdd:    toAdd,
-		toRemove: toRemove,
+	return Demand[U]{
+		ToAdd:    toAdd,
+		ToRemove: toRemove,
 	}
 }
 
@@ -62,7 +62,7 @@ func getStorageBoundDemand[
 	state map[string]T,
 	existing map[string]U,
 	transform func(T) U,
-) demand[U] {
+) Demand[U] {
 	toAdd := []U{}
 	toRemove := []U{}
 
@@ -86,9 +86,9 @@ func getStorageBoundDemand[
 		}
 	}
 
-	return demand[U]{
-		toAdd:    toAdd,
-		toRemove: toRemove,
+	return Demand[U]{
+		ToAdd:    toAdd,
+		ToRemove: toRemove,
 	}
 }
 
@@ -97,26 +97,31 @@ type readyable[T any] interface {
 	IsReady() bool
 }
 
-func getServiceBoundDemand[T comparable, U any, V any, W any, PT Nameable[T], PV readyable[V]](
+type targetable[T comparable] interface {
+	nameable[T]
+	GetTarget() string
+}
+
+func getServiceBoundDemand[T comparable, U comparable, V any, W any, PT targetable[T], PU nameable[U], PV readyable[V]](
 	state map[string]T,
 	existing map[string]U,
 	servers map[string]V,
 	services map[string]W,
 	transform func(T) U,
-) demand[U] {
-	d := demand[U]{
-		toAdd:    []U{},
-		toRemove: []U{},
+) Demand[U] {
+	d := Demand[U]{
+		ToAdd:    []U{},
+		ToRemove: []U{},
 	}
 
 	seen := map[string]U{}
 
 	for _, client := range state {
 		clientPtr := PT(&client)
-		name := clientPtr.GetName()
+		target := clientPtr.GetTarget()
 
-		ss, hasSS := servers[name]
-		_, hasSvc := services[name]
+		ss, hasSS := servers[target]
+		_, hasSvc := services[target]
 
 		ssPtr := PV(&ss)
 
@@ -125,16 +130,17 @@ func getServiceBoundDemand[T comparable, U any, V any, W any, PT Nameable[T], PV
 		}
 
 		desired := transform(client)
+		name := PU(&desired).GetName()
 		seen[name] = desired
 
 		if _, ok := existing[name]; !ok {
-			d.toAdd = append(d.toAdd, desired)
+			d.ToAdd = append(d.ToAdd, desired)
 		}
 	}
 
 	for current, db := range existing {
 		if _, ok := seen[current]; !ok {
-			d.toRemove = append(d.toRemove, db)
+			d.ToRemove = append(d.ToRemove, db)
 		}
 	}
 

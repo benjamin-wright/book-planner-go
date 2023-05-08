@@ -66,6 +66,10 @@ func (db *CockroachClient) GetName() string {
 	return db.Name
 }
 
+func (db *CockroachClient) GetTarget() string {
+	return db.Deployment
+}
+
 var CockroachClientSchema = schema.GroupVersionResource{
 	Group:    "ponglehub.co.uk",
 	Version:  "v1alpha1",

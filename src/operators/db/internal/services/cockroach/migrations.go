@@ -72,87 +72,42 @@ func (d *MigrationsClient) CreateMigrationsTable() error {
 	return err
 }
 
-func (c *MigrationsClient) LatestMigration() int64 {
-	var found int64
-	err := c.conn.QueryRow(context.Background(), "SELECT MAX(id) FROM migrations").Scan(&found)
+func (c *MigrationsClient) AppliedMigrations() ([]Migration, error) {
+	rows, err := c.conn.Query(context.Background(), "SELECT id FROM migrations")
 	if err != nil {
-		return 0
-	}
-	return found
-}
-
-func (c *MigrationsClient) AddMigration(id int64) error {
-	_, err := c.conn.Exec(context.Background(), "INSERT INTO migrations (id) VALUES ($1)", id)
-	return err
-}
-
-func (c *MigrationsClient) RunMigration(query string) error {
-	_, err := c.conn.Exec(context.TODO(), query)
-
-	return err
-}
-
-func (c *MigrationsClient) GetTables() ([]string, error) {
-	rows, err := c.conn.Query(context.TODO(), "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema'")
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get migration ids: %+v", err)
 	}
 	defer rows.Close()
 
-	names := []string{}
+	migrations := []Migration{}
 
 	for rows.Next() {
-		name := ""
-		if err := rows.Scan(&name); err != nil {
-			return nil, err
-		}
-
-		names = append(names, name)
-	}
-
-	return names, nil
-}
-
-func (c *MigrationsClient) GetTableSchema(tableName string) (map[string]string, error) {
-	rows, err := c.conn.Query(context.TODO(), "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = $1", tableName)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	columns := map[string]string{}
-
-	for rows.Next() {
-		var column string
-		var dataType string
-
-		if err = rows.Scan(&column, &dataType); err != nil {
-			return nil, err
-		}
-
-		columns[column] = dataType
-	}
-
-	return columns, err
-}
-
-func (c *MigrationsClient) GetContents(tableName string) ([][]interface{}, error) {
-	rows, err := c.conn.Query(context.TODO(), fmt.Sprintf("SELECT * FROM %s", pgx.Identifier{tableName}.Sanitize()))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	contents := [][]interface{}{}
-
-	for rows.Next() {
-		row, err := rows.Values()
+		var id int64
+		err = rows.Scan(&id)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse database response: %+v", err)
 		}
 
-		contents = append(contents, row)
+		migrations = append(migrations, Migration{
+			DB:       c.deployment,
+			Database: c.database,
+			Index:    id,
+		})
 	}
 
-	return contents, err
+	return migrations, nil
+}
+
+func (c *MigrationsClient) RunMigration(index int64, query string) error {
+	_, err := c.conn.Exec(context.TODO(), query)
+	if err != nil {
+		return fmt.Errorf("failed to run migration: %+v", err)
+	}
+
+	_, err = c.conn.Exec(context.Background(), "INSERT INTO migrations (id) VALUES ($1)", index)
+	if err != nil {
+		return fmt.Errorf("failed to update migrations table: %+v", err)
+	}
+
+	return nil
 }

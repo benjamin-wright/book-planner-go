@@ -1,12 +1,15 @@
-package manager
+package state
 
 import (
+	"go.uber.org/zap"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/manager/migrations"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/cockroach"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/crds"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/resources"
+	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type state struct {
+type State struct {
 	cdbs         bucket[crds.CockroachDB, *crds.CockroachDB]
 	cclients     bucket[crds.CockroachClient, *crds.CockroachClient]
 	cmigrations  bucket[crds.CockroachMigration, *crds.CockroachMigration]
@@ -17,14 +20,15 @@ type state struct {
 	cdatabases   bucket[cockroach.Database, *cockroach.Database]
 	cusers       bucket[cockroach.User, *cockroach.User]
 	cpermissions bucket[cockroach.Permission, *cockroach.Permission]
+	capplied     bucket[cockroach.Migration, *cockroach.Migration]
 	rdbs         bucket[crds.RedisDB, *crds.RedisDB]
 	rsss         bucket[resources.RedisStatefulSet, *resources.RedisStatefulSet]
 	rpvcs        bucket[resources.RedisPVC, *resources.RedisPVC]
 	rsvcs        bucket[resources.RedisService, *resources.RedisService]
 }
 
-func newState() state {
-	return state{
+func New() State {
+	return State{
 		cdbs:         newBucket[crds.CockroachDB](),
 		cclients:     newBucket[crds.CockroachClient](),
 		cmigrations:  newBucket[crds.CockroachMigration](),
@@ -35,6 +39,7 @@ func newState() state {
 		cdatabases:   newBucket[cockroach.Database](),
 		cusers:       newBucket[cockroach.User](),
 		cpermissions: newBucket[cockroach.Permission](),
+		capplied:     newBucket[cockroach.Migration](),
 		rdbs:         newBucket[crds.RedisDB](),
 		rsss:         newBucket[resources.RedisStatefulSet](),
 		rpvcs:        newBucket[resources.RedisPVC](),
@@ -42,7 +47,44 @@ func newState() state {
 	}
 }
 
-func (s *state) getCSSSDemand() demand[resources.CockroachStatefulSet] {
+func (s *State) Apply(update interface{}) {
+	switch u := update.(type) {
+	case k8s_generic.Update[crds.CockroachDB]:
+		s.cdbs.apply(u)
+	case k8s_generic.Update[crds.CockroachClient]:
+		s.cclients.apply(u)
+	case k8s_generic.Update[crds.CockroachMigration]:
+		s.cmigrations.apply(u)
+	case k8s_generic.Update[resources.CockroachStatefulSet]:
+		s.csss.apply(u)
+	case k8s_generic.Update[resources.CockroachPVC]:
+		s.cpvcs.apply(u)
+	case k8s_generic.Update[resources.CockroachService]:
+		s.csvcs.apply(u)
+	case k8s_generic.Update[resources.CockroachSecret]:
+		s.csecrets.apply(u)
+	case k8s_generic.Update[cockroach.Database]:
+		s.cdatabases.apply(u)
+	case k8s_generic.Update[cockroach.User]:
+		s.cusers.apply(u)
+	case k8s_generic.Update[cockroach.Permission]:
+		s.cpermissions.apply(u)
+	case k8s_generic.Update[cockroach.Migration]:
+		s.capplied.apply(u)
+	case k8s_generic.Update[crds.RedisDB]:
+		s.rdbs.apply(u)
+	case k8s_generic.Update[resources.RedisStatefulSet]:
+		s.rsss.apply(u)
+	case k8s_generic.Update[resources.RedisPVC]:
+		s.rpvcs.apply(u)
+	case k8s_generic.Update[resources.RedisService]:
+		s.rsvcs.apply(u)
+	default:
+		zap.S().Errorf("Wat dis? Unknown state update for type %T", u)
+	}
+}
+
+func (s *State) GetCSSSDemand() Demand[resources.CockroachStatefulSet] {
 	return getStorageBoundDemand(
 		s.cdbs.state,
 		s.csss.state,
@@ -55,7 +97,7 @@ func (s *state) getCSSSDemand() demand[resources.CockroachStatefulSet] {
 	)
 }
 
-func (s *state) getCSvcDemand() demand[resources.CockroachService] {
+func (s *State) GetCSvcDemand() Demand[resources.CockroachService] {
 	return getOneForOneDemand(
 		s.cdbs.state,
 		s.csvcs.state,
@@ -65,7 +107,7 @@ func (s *state) getCSvcDemand() demand[resources.CockroachService] {
 	)
 }
 
-func (s *state) getCPVCDemand() []resources.CockroachPVC {
+func (s *State) GetCPVCDemand() []resources.CockroachPVC {
 	return getOrphanedDemand(
 		s.csss.state,
 		s.cpvcs.state,
@@ -75,7 +117,7 @@ func (s *state) getCPVCDemand() []resources.CockroachPVC {
 	)
 }
 
-func (s *state) getCDBDemand() demand[cockroach.Database] {
+func (s *State) GetCDBDemand() Demand[cockroach.Database] {
 	return getServiceBoundDemand(
 		s.cclients.state,
 		s.cdatabases.state,
@@ -90,7 +132,7 @@ func (s *state) getCDBDemand() demand[cockroach.Database] {
 	)
 }
 
-func (s *state) getCUserDemand() demand[cockroach.User] {
+func (s *State) GetCUserDemand() Demand[cockroach.User] {
 	return getServiceBoundDemand(
 		s.cclients.state,
 		s.cusers.state,
@@ -105,7 +147,7 @@ func (s *state) getCUserDemand() demand[cockroach.User] {
 	)
 }
 
-func (s *state) getCPermissionDemand() demand[cockroach.Permission] {
+func (s *State) GetCPermissionDemand() Demand[cockroach.Permission] {
 	return getServiceBoundDemand(
 		s.cclients.state,
 		s.cpermissions.state,
@@ -121,7 +163,7 @@ func (s *state) getCPermissionDemand() demand[cockroach.Permission] {
 	)
 }
 
-func (s *state) getCSecretsDemand() demand[resources.CockroachSecret] {
+func (s *State) GetCSecretsDemand() Demand[resources.CockroachSecret] {
 	return getServiceBoundDemand(
 		s.cclients.state,
 		s.csecrets.state,
@@ -138,40 +180,30 @@ func (s *state) getCSecretsDemand() demand[resources.CockroachSecret] {
 	)
 }
 
-func (s *state) getCMigrationsDemand() map[string]map[string]map[int64]crds.CockroachMigration {
-	migrations := map[string]map[string]map[int64]crds.CockroachMigration{}
+func (s *State) RefreshCockroach(namespace string) {
+	s.cdatabases.clear()
+	s.cusers.clear()
+	s.cpermissions.clear()
+	s.capplied.clear()
 
-	// Get migrations as mapped lookup
-	for _, migration := range s.cmigrations.state {
-		if _, ok := migrations[migration.Deployment]; !ok {
-			migrations[migration.Deployment] = map[string]map[int64]crds.CockroachMigration{}
-		}
-
-		if _, ok := migrations[migration.Deployment][migration.Database]; !ok {
-			migrations[migration.Deployment][migration.Database] = map[int64]crds.CockroachMigration{}
-		}
-
-		migrations[migration.Deployment][migration.Database][migration.Index] = migration
-	}
-
-	// Pick out the migrations for statefulsets that
-	demand := map[string]map[string]map[int64]crds.CockroachMigration{}
-	for _, db := range s.cdatabases.state {
-		if dbMigrations, ok := migrations[db.DB]; ok {
-			if migrations, ok := dbMigrations[db.Name]; ok {
-				if _, ok := demand[db.DB]; !ok {
-					demand[db.DB] = map[string]map[int64]crds.CockroachMigration{}
-				}
-
-				demand[db.DB][db.Name] = migrations
-			}
-		}
-	}
-
-	return demand
+	buildCockroachState(s, namespace)
 }
 
-func (s *state) getRSSSDemand() demand[resources.RedisStatefulSet] {
+func (s *State) GetCMigrationsDemand() migrations.DBMigrations {
+	migrations := migrations.New()
+
+	for _, m := range s.cmigrations.state {
+		migrations.AddRequest(m.Deployment, m.Database, m.Index, m.Migration)
+	}
+
+	for _, m := range s.capplied.state {
+		migrations.AddApplied(m.DB, m.Database, m.Index)
+	}
+
+	return migrations
+}
+
+func (s *State) GetRSSSDemand() Demand[resources.RedisStatefulSet] {
 	return getStorageBoundDemand(
 		s.rdbs.state,
 		s.rsss.state,
@@ -184,7 +216,7 @@ func (s *state) getRSSSDemand() demand[resources.RedisStatefulSet] {
 	)
 }
 
-func (s *state) getRSvcDemand() demand[resources.RedisService] {
+func (s *State) GetRSvcDemand() Demand[resources.RedisService] {
 	return getOneForOneDemand(
 		s.rdbs.state,
 		s.rsvcs.state,
@@ -194,7 +226,7 @@ func (s *state) getRSvcDemand() demand[resources.RedisService] {
 	)
 }
 
-func (s *state) getRPVCDemand() []resources.RedisPVC {
+func (s *State) GetRPVCDemand() []resources.RedisPVC {
 	return getOrphanedDemand(
 		s.rsss.state,
 		s.rpvcs.state,

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/manager/state"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/cockroach"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/crds"
 	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/resources"
@@ -47,7 +48,7 @@ type Manager struct {
 	cancel    context.CancelFunc
 	clients   clients
 	streams   streams
-	state     state
+	state     state.State
 	debouncer utils.Debouncer
 }
 
@@ -168,7 +169,7 @@ func New(
 		cancel:    cancel,
 		clients:   clients,
 		streams:   streams,
-		state:     newState(),
+		state:     state.New(),
 		debouncer: utils.NewDebouncer(debouncer),
 	}, nil
 }
@@ -192,47 +193,49 @@ func (m *Manager) Start() {
 }
 
 func (m *Manager) refresh() {
+
 	select {
 	case <-m.ctx.Done():
 	case update := <-m.streams.cdbs:
-		m.state.cdbs.apply(update)
+		m.state.Apply(update)
 		m.debouncer.Trigger()
 	case update := <-m.streams.cclients:
-		m.state.cclients.apply(update)
+		m.state.Apply(update)
 		m.debouncer.Trigger()
 	case update := <-m.streams.cmigrations:
-		m.state.cmigrations.apply(update)
+		m.state.Apply(update)
 		m.debouncer.Trigger()
 	case update := <-m.streams.rdbs:
-		m.state.rdbs.apply(update)
+		m.state.Apply(update)
 		m.debouncer.Trigger()
 	case update := <-m.streams.csss:
-		m.state.csss.apply(update)
+		m.state.Apply(update)
 		m.debouncer.Trigger()
 	case update := <-m.streams.csvcs:
-		m.state.csvcs.apply(update)
+		m.state.Apply(update)
 		m.debouncer.Trigger()
 	case update := <-m.streams.cpvcs:
-		m.state.cpvcs.apply(update)
+		m.state.Apply(update)
 		m.debouncer.Trigger()
 	case update := <-m.streams.csecrets:
-		m.state.csecrets.apply(update)
+		m.state.Apply(update)
 		m.debouncer.Trigger()
 	case update := <-m.streams.rdbs:
-		m.state.rdbs.apply(update)
+		m.state.Apply(update)
 		m.debouncer.Trigger()
 	case update := <-m.streams.rsss:
-		m.state.rsss.apply(update)
+		m.state.Apply(update)
 		m.debouncer.Trigger()
 	case update := <-m.streams.rpvcs:
-		m.state.rpvcs.apply(update)
+		m.state.Apply(update)
 		m.debouncer.Trigger()
 	case update := <-m.streams.rsvcs:
-		m.state.rsvcs.apply(update)
+		m.state.Apply(update)
 		m.debouncer.Trigger()
 	case <-m.debouncer.Wait():
+		zap.S().Infof("Database state update")
+		m.state.RefreshCockroach(m.namespace)
 		zap.S().Infof("Processing Started")
-		m.refreshDBs()
 		m.processCockroachDBs()
 		m.processCockroachClients()
 		m.processCockroachMigrations()
@@ -241,60 +244,12 @@ func (m *Manager) refresh() {
 	}
 }
 
-func (m *Manager) refreshDBs() {
-	m.state.cdatabases.clear()
-	m.state.cusers.clear()
-	m.state.cpermissions.clear()
-
-	for db := range m.state.cdbs.state {
-		ss, hasSS := m.state.csss.state[db]
-		_, hasSvc := m.state.csvcs.state[db]
-		if !hasSS || !hasSvc || !ss.Ready {
-			continue
-		}
-
-		cli, err := cockroach.New(db, m.namespace)
-		if err != nil {
-			zap.S().Errorf("Failed to create client for database %s: %+v", db, err)
-		}
-		defer cli.Stop()
-
-		users, err := cli.ListUsers()
-		if err != nil {
-			zap.S().Errorf("Failed to list users in %s: %+v", db, err)
-		}
-
-		for _, user := range users {
-			m.state.cusers.add(user)
-		}
-
-		names, err := cli.ListDBs()
-		if err != nil {
-			zap.S().Errorf("Failed to list databases in %s: %+v", db, err)
-		}
-
-		for _, db := range names {
-			m.state.cdatabases.add(db)
-
-			permissions, err := cli.ListPermitted(db)
-			if err != nil {
-				zap.S().Errorf("Failed to list permissions in %s: %+v", db.Name, err)
-			}
-
-			for _, p := range permissions {
-				m.state.cpermissions.add(p)
-			}
-		}
-
-	}
-}
-
 func (m *Manager) processCockroachDBs() {
-	ssDemand := m.state.getCSSSDemand()
-	svcDemand := m.state.getCSvcDemand()
-	pvcsToRemove := m.state.getCPVCDemand()
+	ssDemand := m.state.GetCSSSDemand()
+	svcDemand := m.state.GetCSvcDemand()
+	pvcsToRemove := m.state.GetCPVCDemand()
 
-	for _, db := range ssDemand.toRemove {
+	for _, db := range ssDemand.ToRemove {
 		zap.S().Infof("Deleting db: %s", db.Name)
 		err := m.clients.csss.Delete(m.ctx, db.Name)
 
@@ -303,7 +258,7 @@ func (m *Manager) processCockroachDBs() {
 		}
 	}
 
-	for _, svc := range svcDemand.toRemove {
+	for _, svc := range svcDemand.ToRemove {
 		zap.S().Infof("Deleting service: %s", svc.Name)
 		err := m.clients.csvcs.Delete(m.ctx, svc.Name)
 
@@ -321,7 +276,7 @@ func (m *Manager) processCockroachDBs() {
 		}
 	}
 
-	for _, db := range ssDemand.toAdd {
+	for _, db := range ssDemand.ToAdd {
 		zap.S().Infof("Creating db: %s", db.Name)
 		err := m.clients.csss.Create(m.ctx, db)
 
@@ -330,7 +285,7 @@ func (m *Manager) processCockroachDBs() {
 		}
 	}
 
-	for _, svc := range svcDemand.toAdd {
+	for _, svc := range svcDemand.ToAdd {
 		zap.S().Infof("Creating service: %s", svc.Name)
 		err := m.clients.csvcs.Create(m.ctx, svc)
 
@@ -341,32 +296,32 @@ func (m *Manager) processCockroachDBs() {
 }
 
 func (m *Manager) processCockroachClients() {
-	dbDemand := m.state.getCDBDemand()
-	userDemand := m.state.getCUserDemand()
-	permsDemand := m.state.getCPermissionDemand()
-	secretsDemand := m.state.getCSecretsDemand()
+	dbDemand := m.state.GetCDBDemand()
+	userDemand := m.state.GetCUserDemand()
+	permsDemand := m.state.GetCPermissionDemand()
+	secretsDemand := m.state.GetCSecretsDemand()
 
 	dbs := map[string]struct{}{}
-	for _, db := range dbDemand.toAdd {
+	for _, db := range dbDemand.ToAdd {
 		dbs[db.DB] = struct{}{}
 	}
-	for _, db := range dbDemand.toRemove {
+	for _, db := range dbDemand.ToRemove {
 		dbs[db.DB] = struct{}{}
 	}
-	for _, user := range userDemand.toAdd {
+	for _, user := range userDemand.ToAdd {
 		dbs[user.DB] = struct{}{}
 	}
-	for _, user := range userDemand.toRemove {
+	for _, user := range userDemand.ToRemove {
 		dbs[user.DB] = struct{}{}
 	}
-	for _, perm := range permsDemand.toAdd {
+	for _, perm := range permsDemand.ToAdd {
 		dbs[perm.DB] = struct{}{}
 	}
-	for _, perm := range permsDemand.toRemove {
+	for _, perm := range permsDemand.ToRemove {
 		dbs[perm.DB] = struct{}{}
 	}
 
-	for _, secret := range secretsDemand.toRemove {
+	for _, secret := range secretsDemand.ToRemove {
 		zap.S().Infof("Removing secret %s", secret.Name)
 		err := m.clients.csecrets.Delete(m.ctx, secret.Name)
 		if err != nil {
@@ -382,7 +337,7 @@ func (m *Manager) processCockroachClients() {
 		}
 		defer cli.Stop()
 
-		for _, perm := range permsDemand.toRemove {
+		for _, perm := range permsDemand.ToRemove {
 			if perm.DB != database {
 				continue
 			}
@@ -394,7 +349,7 @@ func (m *Manager) processCockroachClients() {
 			}
 		}
 
-		for _, db := range dbDemand.toRemove {
+		for _, db := range dbDemand.ToRemove {
 			if db.DB != database {
 				continue
 			}
@@ -406,7 +361,7 @@ func (m *Manager) processCockroachClients() {
 			}
 		}
 
-		for _, user := range userDemand.toRemove {
+		for _, user := range userDemand.ToRemove {
 			if user.DB != database {
 				continue
 			}
@@ -418,7 +373,7 @@ func (m *Manager) processCockroachClients() {
 			}
 		}
 
-		for _, db := range dbDemand.toAdd {
+		for _, db := range dbDemand.ToAdd {
 			if db.DB != database {
 				continue
 			}
@@ -431,7 +386,7 @@ func (m *Manager) processCockroachClients() {
 			}
 		}
 
-		for _, user := range userDemand.toAdd {
+		for _, user := range userDemand.ToAdd {
 			if user.DB != database {
 				continue
 			}
@@ -444,7 +399,7 @@ func (m *Manager) processCockroachClients() {
 			}
 		}
 
-		for _, perm := range permsDemand.toAdd {
+		for _, perm := range permsDemand.ToAdd {
 			if perm.DB != database {
 				continue
 			}
@@ -457,7 +412,7 @@ func (m *Manager) processCockroachClients() {
 		}
 	}
 
-	for _, secret := range secretsDemand.toAdd {
+	for _, secret := range secretsDemand.ToAdd {
 		zap.S().Infof("Adding secret %s", secret.Name)
 		err := m.clients.csecrets.Create(m.ctx, secret)
 		if err != nil {
@@ -467,10 +422,10 @@ func (m *Manager) processCockroachClients() {
 }
 
 func (m *Manager) processCockroachMigrations() {
-	migrationDemand := m.state.getCMigrationsDemand()
+	demand := m.state.GetCMigrationsDemand()
 
-	for deployment, byDatabase := range migrationDemand {
-		for database, migrations := range byDatabase {
+	for _, deployment := range demand.GetDBs() {
+		for _, database := range demand.GetDatabases(deployment) {
 			client, err := cockroach.NewMigrations(deployment, m.namespace, database)
 			if err != nil {
 				zap.S().Errorf("Failed to create migrations client: %+v", err)
@@ -478,50 +433,27 @@ func (m *Manager) processCockroachMigrations() {
 			}
 			defer client.Stop()
 
-			if ok, err := client.HasMigrationsTable(); err != nil {
-				zap.S().Errorf("Failed to check for migrations table: %+v", err)
-				continue
-			} else if !ok {
-				err := client.CreateMigrationsTable()
-				if err != nil {
-					zap.S().Errorf("Failed to create migrations client: %+v", err)
-					continue
-				}
-			}
+			for demand.Next(deployment, database) {
+				migration, index := demand.GetNextMigration(deployment, database)
 
-			nextIndex := client.LatestMigration() + 1
-			for {
-				migration, ok := migrations[nextIndex]
-				if !ok {
+				zap.S().Infof("Running migration %s [%s] %d", deployment, database, index)
+
+				err := client.RunMigration(index, migration)
+				if err != nil {
+					zap.S().Errorf("Failed to run migration %d: %+v", index, err)
 					break
 				}
-
-				zap.S().Infof("Running migration %s [%s] %d", migration.Deployment, migration.Database, nextIndex)
-
-				err := client.RunMigration(migration.Migration)
-				if err != nil {
-					zap.S().Errorf("Failed to run migration %d: %+v", nextIndex, err)
-					break
-				}
-
-				err = client.AddMigration(nextIndex)
-				if err != nil {
-					zap.S().Errorf("Failed to add migration index %d: %+v", nextIndex, err)
-					break
-				}
-
-				nextIndex += 1
 			}
 		}
 	}
 }
 
 func (m *Manager) processRedisDBs() {
-	ssDemand := m.state.getRSSSDemand()
-	svcDemand := m.state.getRSvcDemand()
-	pvcsToRemove := m.state.getRPVCDemand()
+	ssDemand := m.state.GetRSSSDemand()
+	svcDemand := m.state.GetRSvcDemand()
+	pvcsToRemove := m.state.GetRPVCDemand()
 
-	for _, db := range ssDemand.toRemove {
+	for _, db := range ssDemand.ToRemove {
 		zap.S().Infof("Deleting db: %s", db.Name)
 		err := m.clients.rsss.Delete(m.ctx, db.Name)
 
@@ -530,7 +462,7 @@ func (m *Manager) processRedisDBs() {
 		}
 	}
 
-	for _, svc := range svcDemand.toRemove {
+	for _, svc := range svcDemand.ToRemove {
 		zap.S().Infof("Deleting service: %s", svc.Name)
 		err := m.clients.rsvcs.Delete(m.ctx, svc.Name)
 
@@ -548,7 +480,7 @@ func (m *Manager) processRedisDBs() {
 		}
 	}
 
-	for _, db := range ssDemand.toAdd {
+	for _, db := range ssDemand.ToAdd {
 		zap.S().Infof("Creating db: %s", db.Name)
 		err := m.clients.rsss.Create(m.ctx, db)
 
@@ -557,7 +489,7 @@ func (m *Manager) processRedisDBs() {
 		}
 	}
 
-	for _, svc := range svcDemand.toAdd {
+	for _, svc := range svcDemand.ToAdd {
 		zap.S().Infof("Creating service: %s", svc.Name)
 		err := m.clients.rsvcs.Create(m.ctx, svc)
 

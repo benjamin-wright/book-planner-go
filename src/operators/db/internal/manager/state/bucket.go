@@ -1,20 +1,20 @@
-package manager
+package state
 
 import (
 	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 
-type Nameable[T comparable] interface {
+type nameable[T comparable] interface {
 	*T
 	GetName() string
 }
 
-type bucket[T comparable, PT Nameable[T]] struct {
+type bucket[T comparable, PT nameable[T]] struct {
 	state map[string]T
 }
 
-func newBucket[T comparable, PT Nameable[T]]() bucket[T, PT] {
+func newBucket[T comparable, PT nameable[T]]() bucket[T, PT] {
 	return bucket[T, PT]{
 		state: map[string]T{},
 	}

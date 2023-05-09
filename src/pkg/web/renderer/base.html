@@ -1,0 +1,10 @@
+<html>
+    <head>
+        <title>{{ .Title }}</title>
+    </head>
+    <body>
+        {{ block "components.header" . }}{{ end }}
+        {{ block "page" . }}{{ end }}
+        {{ block "components.footer" . }}{{ end }}
+    </body>
+</html>

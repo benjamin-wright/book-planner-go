@@ -1,4 +1,4 @@
-package header
+package widget
 
 import (
 	_ "embed"
@@ -6,12 +6,12 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/component"
 )
 
-//go:embed header.html
+//go:embed widget.html
 var content string
 
 func Get() component.Component {
 	return component.Component{
-		Name:     "components.header",
+		Name:     "components.widget",
 		Template: content,
 	}
 }

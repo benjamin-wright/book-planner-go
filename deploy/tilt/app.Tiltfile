@@ -1,11 +1,9 @@
-def operator(name):
-    dirs = listdir('src/operators/%s/crds' % name)
-
+def app(path, name):
     custom_build(
-        name,
-        'just build src/operators/%s $EXPECTED_REF' % name,
+        '%s-%s' % (path, name),
+        'just build src/%s/%s $EXPECTED_REF' % (path, name),
         [
-            'src/operators/%s' % name
+            'src/%s/%s' % (path, name)
         ],
         ignore = [
             'dist/*',
@@ -14,37 +12,34 @@ def operator(name):
     )
 
     local_resource(
-        '%s-test' % name,
-        'just test src/operators/%s' % name,
+        '%s-%s-test' % (path, name),
+        'just test src/%s/%s' % (path, name),
         deps = [name],
         auto_init = False,
         trigger_mode = TRIGGER_MODE_MANUAL
     )
 
     local_resource(
-        '%s-int-test' % name,
-        'just int-test src/operators/%s' % name,
+        '%s-%s-int-test' % (path, name),
+        'just int-test src/%s/%s' % (path, name),
         deps = [name],
         auto_init = False,
         trigger_mode = TRIGGER_MODE_MANUAL
     )
 
-    k8s_yaml(dirs)
-
     k8s_yaml(helm(
-        'src/operators/chart',
-        name=name,
+        'deploy/helm/app',
+        name='%s-%s' % (path, name),
         namespace='book-planner',
-        values=[
-            'src/operators/%s/values.yaml' % name
-        ],
         set=[
-            'image=%s' % name
+            'name=%s-%s' % (path, name),
+            'image=%s-%s' % (path, name),
+            'path=/%s' % (name),
         ]
     ))
 
     k8s_resource(
-        name,
+        '%s-%s' % (path, name),
         auto_init = True,
         trigger_mode = TRIGGER_MODE_MANUAL
     )

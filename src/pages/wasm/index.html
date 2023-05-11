@@ -1,0 +1,8 @@
+<p1>Testing!</p1>
+
+<button onclick="wasm.exports.multiply(5, 4)">Click</button>
+<p id="target">target</p>
+
+{{ range .Widgets }}
+{{ template "components.widget" . }}
+{{ end }}

@@ -60,6 +60,7 @@ tilt:
 
 build PATH_TO_CODE IMAGE_TAG:
     mkdir -p "{{PATH_TO_CODE}}/dist";
+    go generate ./{{PATH_TO_CODE}}/...;
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o "{{PATH_TO_CODE}}/dist/app" "{{PATH_TO_CODE}}/main.go";
     docker build -t "{{IMAGE_TAG}}" -f docker/golang.Dockerfile "{{PATH_TO_CODE}}/dist"
 

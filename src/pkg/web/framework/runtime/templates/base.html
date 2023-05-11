@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>{{ .Static.Title }}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        {{ range .Static.Scripts }}
+        <script src="{{ . }}" type="application/javascript"></script>
+        {{ end }}
+        {{ range .Static.CSS }}
+        <link rel="stylesheet" href="{{ . }}">
+        {{ end }}
+    </head>
+    <body>
+        {{ block "components.header" . }}{{ end }}
+        {{ block "page" .Dynamic }}{{ end }}
+        {{ block "components.footer" . }}{{ end }}
+    </body>
+</html>

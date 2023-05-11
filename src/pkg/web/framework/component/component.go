@@ -1,4 +1,4 @@
-package framework
+package component
 
 import (
 	"html/template"

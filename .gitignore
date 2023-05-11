@@ -2,3 +2,4 @@
 tilt_modules
 dist
 *.wasm
+wasm_exec.js

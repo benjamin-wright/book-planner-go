@@ -12,3 +12,15 @@ spec:
       namespace: {{ .Release.Namespace }}
       port: 80
       scheme: http
+{{- if .Values.secure }}
+    middlewares:
+    - name: {{ .Values.name }}-auth
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ .Values.name }}-auth
+spec:
+  forwardAuth:
+    address: http://apis-auth.{{ .Release.Namespace }}.svc.cluster.local
+{{- end }}

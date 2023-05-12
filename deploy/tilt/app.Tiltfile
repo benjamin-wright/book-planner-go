@@ -1,4 +1,4 @@
-def app(path, name):
+def app(path, name, secure):
     custom_build(
         '%s-%s' % (path, name),
         'just build src/%s/%s $EXPECTED_REF' % (path, name),
@@ -35,6 +35,7 @@ def app(path, name):
             'name=%s-%s' % (path, name),
             'image=%s-%s' % (path, name),
             'path=/%s' % (name),
+            'secure=%s' % secure
         ]
     ))
 

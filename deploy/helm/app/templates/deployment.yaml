@@ -16,5 +16,5 @@ spec:
       - name: app
         image: {{ .Values.image }}
         env:
-        - name: PATH_PREFIX
+        - name: PROXY_PREFIX
           value: {{ .Values.path }}

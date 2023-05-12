@@ -7,4 +7,5 @@ k8s_yaml(namespace_yaml('book-planner'))
 
 operator('db')
 
-app('pages', 'home')
+app('apis', 'auth', 'false')
+app('pages', 'home', 'true')

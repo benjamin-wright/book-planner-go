@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"net/http"
 
-	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/runtime"
 )
 
@@ -15,11 +14,11 @@ type Context struct {
 }
 
 func main() {
-	logger, _ := zap.NewDevelopment()
-	zap.ReplaceGlobals(logger)
-
-	server := runtime.NewServer(content, "Book Planner")
-	server.Run(func(r *http.Request) any {
-		return Context{}
+	runtime.Run(runtime.ServerOptions{
+		Template: content,
+		Title:    "Book Planner",
+		Handler: func(r *http.Request) any {
+			return Context{}
+		},
 	})
 }

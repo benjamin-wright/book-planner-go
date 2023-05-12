@@ -34,7 +34,8 @@ type ServerOptions struct {
 	Title       string
 	Children    []component.Component
 	WASMModules []WASMModule
-	Handler     func(r *http.Request) any
+	PageHandler func(r *http.Request) any
+	PostHandler func(w http.ResponseWriter, r *http.Request) any
 }
 
 type WASMModule struct {
@@ -44,10 +45,10 @@ type WASMModule struct {
 }
 
 type staticContext struct {
-	Title       string
-	Scripts     []string
-	CSS         []string
-	ProxyPrefix string
+	Title      string
+	Scripts    []string
+	CSS        []string
+	PathPrefix string
 }
 
 type context struct {
@@ -78,6 +79,7 @@ func Run(options ServerOptions) error {
 	zap.ReplaceGlobals(logger)
 
 	proxyPrefix := os.Getenv("PROXY_PREFIX")
+	basePath := os.Getenv("BASE_PATH")
 
 	t := getPageComponent(options)
 
@@ -88,10 +90,10 @@ func Run(options ServerOptions) error {
 	wasm := map[string][]byte{}
 
 	sc := staticContext{
-		Title:       options.Title,
-		Scripts:     []string{},
-		CSS:         []string{"styles.css"},
-		ProxyPrefix: proxyPrefix,
+		Title:      options.Title,
+		Scripts:    []string{},
+		CSS:        []string{"styles.css"},
+		PathPrefix: basePath + proxyPrefix,
 	}
 
 	for _, module := range options.WASMModules {
@@ -110,7 +112,7 @@ func Run(options ServerOptions) error {
 
 		var script bytes.Buffer
 		err := t.Execute(&script, map[string]interface{}{
-			"Path": proxyPrefix + "/" + module.Path,
+			"Path": basePath + "/" + proxyPrefix + "/" + module.Path,
 			"Name": module.Name,
 		})
 		if err != nil {
@@ -122,10 +124,15 @@ func Run(options ServerOptions) error {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc(sc.ProxyPrefix, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(proxyPrefix, func(w http.ResponseWriter, r *http.Request) {
 		zap.S().Infof("HTTP %s %s", r.Method, r.URL.Path)
 
-		data := options.Handler(r)
+		if r.Method == "POST" && options.PostHandler != nil {
+			options.PostHandler(w, r)
+			return
+		}
+
+		data := options.PageHandler(r)
 
 		context := context{
 			Static:  sc,
@@ -148,15 +155,15 @@ func Run(options ServerOptions) error {
 	})
 
 	for path, data := range js {
-		mux.HandleFunc(sc.ProxyPrefix+"/"+path, fileHandler("text/javascript", data))
+		mux.HandleFunc(proxyPrefix+"/"+path, fileHandler("text/javascript", data))
 	}
 
 	for path, data := range wasm {
-		mux.HandleFunc(sc.ProxyPrefix+"/"+path, fileHandler("application/wasm", data))
+		mux.HandleFunc(proxyPrefix+"/"+path, fileHandler("application/wasm", data))
 	}
 
 	for path, data := range css {
-		mux.HandleFunc(sc.ProxyPrefix+"/"+path, fileHandler("text/css", data))
+		mux.HandleFunc(proxyPrefix+"/"+path, fileHandler("text/css", data))
 	}
 
 	zap.S().Info("running server...")

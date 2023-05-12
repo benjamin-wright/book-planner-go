@@ -17,7 +17,11 @@ spec:
         image: {{ .Values.image }}
         env:
         - name: PROXY_PREFIX
-          value: {{ .Values.path }}
+          value: "{{ .Values.path }}"
+        {{- if .Values.basepath }}
+        - name: BASE_PATH
+          value: "{{ .Values.basepath }}"
+        {{- end }}
         {{- range $key, $value := .Values.env }}
         - name: "{{ $key }}"
           value: "{{ $value }}"

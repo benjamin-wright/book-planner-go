@@ -1,0 +1,12 @@
+apiVersion: ponglehub.co.uk/v1alpha1
+{{- if eq .Values.type "redis" }}
+kind: RedisDB
+{{- else if eq .Values.type "cockroach" }}
+kind: CockroachDB
+{{- else }}
+{{ fail (printf "didn't recognise database type: %s" .Values.type) }}
+{{- end }}
+metadata:
+  name: {{ .Values.name }}
+spec:
+  storage: {{ .Values.storage }}

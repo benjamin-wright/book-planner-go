@@ -1,4 +1,6 @@
 # name:
 # image:
+# path:
+# basepath:
 replicas: 1
 env: {}

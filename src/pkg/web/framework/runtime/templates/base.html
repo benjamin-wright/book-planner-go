@@ -4,10 +4,10 @@
         <title>{{ .Static.Title }}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         {{ range .Static.Scripts }}
-        <script src="{{ $.Static.ProxyPrefix }}/{{ . }}" type="application/javascript"></script>
+        <script src="{{ $.Static.PathPrefix }}/{{ . }}" type="application/javascript"></script>
         {{ end }}
         {{ range .Static.CSS }}
-        <link rel="stylesheet" href="{{ $.Static.ProxyPrefix }}/{{ . }}">
+        <link rel="stylesheet" href="{{ $.Static.PathPrefix }}/{{ . }}">
         {{ end }}
     </head>
     <body>

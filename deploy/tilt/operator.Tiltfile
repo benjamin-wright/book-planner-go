@@ -13,21 +13,21 @@ def operator(name):
         ]
     )
 
-    local_resource(
-        '%s-test' % name,
-        'just test src/operators/%s' % name,
-        deps = [name],
-        auto_init = False,
-        trigger_mode = TRIGGER_MODE_MANUAL
-    )
+    # local_resource(
+    #     '%s-test' % name,
+    #     'just test src/operators/%s' % name,
+    #     deps = [name],
+    #     auto_init = False,
+    #     trigger_mode = TRIGGER_MODE_MANUAL
+    # )
 
-    local_resource(
-        '%s-int-test' % name,
-        'just int-test src/operators/%s' % name,
-        deps = [name],
-        auto_init = False,
-        trigger_mode = TRIGGER_MODE_MANUAL
-    )
+    # local_resource(
+    #     '%s-int-test' % name,
+    #     'just int-test src/operators/%s' % name,
+    #     deps = [name],
+    #     auto_init = False,
+    #     trigger_mode = TRIGGER_MODE_MANUAL
+    # )
 
     k8s_yaml(dirs)
 

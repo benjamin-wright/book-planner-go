@@ -18,3 +18,7 @@ spec:
         env:
         - name: PROXY_PREFIX
           value: {{ .Values.path }}
+        {{- range $key, $value := .Values.env }}
+        - name: "{{ $key }}"
+          value: "{{ $value }}"
+        {{- end }}

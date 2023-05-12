@@ -1,4 +1,10 @@
-def app(path, name, secure):
+def secure(path, name, sets):
+    app(path, name, sets, True)
+
+def insecure(path, name, sets):
+    app(path, name, sets, False)
+
+def app(path, name, sets, secure):
     custom_build(
         '%s-%s' % (path, name),
         'just build src/%s/%s $EXPECTED_REF' % (path, name),
@@ -34,9 +40,9 @@ def app(path, name, secure):
         set=[
             'name=%s-%s' % (path, name),
             'image=%s-%s' % (path, name),
-            'path=/%s' % (name),
-            'secure=%s' % secure
-        ]
+            'path=/%s' % name,
+            'secure=%s' % secure,
+        ] + sets,
     ))
 
     k8s_resource(

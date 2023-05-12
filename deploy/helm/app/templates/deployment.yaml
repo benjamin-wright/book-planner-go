@@ -1,28 +1,33 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.name }}
+  name: "{{ .Values.name }}"
 spec:
   replicas: {{ .Values.replicas | default 1 }}
   selector:
     matchLabels:
-      app: {{ .Values.name }}
+      app: "{{ .Values.name }}"
   template:
     metadata:
       labels:
-        app: {{ .Values.name }}
+        app: "{{ .Values.name }}"
     spec:
       containers:
       - name: app
-        image: {{ .Values.image }}
+        image: "{{ .Values.image }}"
+        {{- if .Values.redis }}
+        envFrom:
+        - secretRef:
+            name: "{{ .Values.redis.secret }}"
+        {{- end }}
         env:
         - name: PROXY_PREFIX
           value: "{{ .Values.path }}"
-        {{- if .Values.basepath }}
-        - name: BASE_PATH
-          value: "{{ .Values.basepath }}"
+        {{- if .Values.baseUrl }}
+        - name: BASE_URL
+          value: "{{ .Values.baseUrl }}"
         {{- end }}
         {{- range $key, $value := .Values.env }}
         - name: "{{ $key }}"
-          value: "{{ $value }}"
+          value: "{{ tpl $value $ }}"
         {{- end }}

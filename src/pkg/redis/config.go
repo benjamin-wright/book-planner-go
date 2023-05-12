@@ -8,9 +8,9 @@ import (
 )
 
 type ConnectConfig struct {
-	Host     string
-	Port     int
-	Database int
+	Host string
+	Port int
+	Unit int
 }
 
 func ConfigFromEnv() (ConnectConfig, error) {
@@ -31,19 +31,19 @@ func ConfigFromEnv() (ConnectConfig, error) {
 		return empty, fmt.Errorf("failed to convert REDIS_PORT: %+v", err)
 	}
 
-	databaseString, ok := os.LookupEnv("REDIS_DATABASE")
+	unitString, ok := os.LookupEnv("REDIS_UNIT")
 	if !ok {
-		return empty, errors.New("failed to lookup REDIS_DATABASE env var")
+		return empty, errors.New("failed to lookup REDIS_UNIT env var")
 	}
 
-	database, err := strconv.Atoi(databaseString)
+	unit, err := strconv.Atoi(unitString)
 	if err != nil {
-		return empty, fmt.Errorf("failed to convert REDIS_DATABASE: %+v", err)
+		return empty, fmt.Errorf("failed to convert REDIS_UNIT: %+v", err)
 	}
 
 	return ConnectConfig{
-		Host:     host,
-		Port:     port,
-		Database: database,
+		Host: host,
+		Port: port,
+		Unit: unit,
 	}, nil
 }

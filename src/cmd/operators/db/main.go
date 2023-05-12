@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/manager"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/crds"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/resources"
+	"ponglehub.co.uk/book-planner-go/src/cmd/operators/db/internal/manager"
+	"ponglehub.co.uk/book-planner-go/src/cmd/operators/db/internal/services/k8s/crds"
+	"ponglehub.co.uk/book-planner-go/src/cmd/operators/db/internal/services/k8s/resources"
 )
 
 func main() {

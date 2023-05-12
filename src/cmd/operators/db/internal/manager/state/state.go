@@ -2,10 +2,10 @@ package state
 
 import (
 	"go.uber.org/zap"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/manager/migrations"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/cockroach"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/crds"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/resources"
+	"ponglehub.co.uk/book-planner-go/src/cmd/operators/db/internal/manager/migrations"
+	"ponglehub.co.uk/book-planner-go/src/cmd/operators/db/internal/services/cockroach"
+	"ponglehub.co.uk/book-planner-go/src/cmd/operators/db/internal/services/k8s/crds"
+	"ponglehub.co.uk/book-planner-go/src/cmd/operators/db/internal/services/k8s/resources"
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 

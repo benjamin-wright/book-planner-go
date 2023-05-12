@@ -3,10 +3,11 @@ package main
 import (
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"ponglehub.co.uk/book-planner-go/src/pkg/tokens"
+	"ponglehub.co.uk/book-planner-go/src/internal/tokens"
 )
 
 func main() {
@@ -18,6 +19,11 @@ func main() {
 	t, err := tokens.New([]byte{})
 	if err != nil {
 		zap.S().Errorf("Failed to create token client: %+v", err)
+	}
+
+	_, err = t.NewToken("hello", "login", 5*time.Second)
+	if err != nil {
+		zap.S().Errorf("Failed to create a test token: %+v", err)
 	}
 
 	r := gin.Default()

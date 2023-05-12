@@ -1,0 +1,13 @@
+# name:
+# baseUrl:
+# image:
+
+env:
+  LOGIN_URL: "{{ .Values.baseUrl }}/login"
+
+path: "/auth"
+
+redis:
+  deployment: "redis"
+  unit: 0
+  secret: "auth-login-redis"

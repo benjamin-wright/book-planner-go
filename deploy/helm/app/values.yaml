@@ -1,6 +1,14 @@
 # name:
+# baseUrl:
 # image:
-# path:
-# basepath:
+
 replicas: 1
 env: {}
+
+# path:
+secure: true
+
+# redis:
+#   deployment:
+#   unit:
+#   secret:

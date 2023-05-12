@@ -2,7 +2,7 @@ package state
 
 import (
 	"go.uber.org/zap"
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/cockroach"
+	"ponglehub.co.uk/book-planner-go/src/cmd/operators/db/internal/services/cockroach"
 )
 
 func buildCockroachState(s *State, namespace string) {

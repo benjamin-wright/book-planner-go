@@ -1,11 +1,11 @@
 def operator(name):
-    dirs = listdir('src/operators/%s/crds' % name)
+    dirs = listdir('src/cmd/operators/%s/crds' % name)
 
     custom_build(
         name,
-        'just build src/operators/%s $EXPECTED_REF' % name,
+        'just build src/cmd/operators/%s $EXPECTED_REF' % name,
         [
-            'src/operators/%s' % name
+            'src/cmd/operators/%s' % name
         ],
         ignore = [
             'dist/*',
@@ -15,7 +15,7 @@ def operator(name):
 
     # local_resource(
     #     '%s-test' % name,
-    #     'just test src/operators/%s' % name,
+    #     'just test src/cmd/operators/%s' % name,
     #     deps = [name],
     #     auto_init = False,
     #     trigger_mode = TRIGGER_MODE_MANUAL
@@ -23,7 +23,7 @@ def operator(name):
 
     # local_resource(
     #     '%s-int-test' % name,
-    #     'just int-test src/operators/%s' % name,
+    #     'just int-test src/cmd/operators/%s' % name,
     #     deps = [name],
     #     auto_init = False,
     #     trigger_mode = TRIGGER_MODE_MANUAL
@@ -36,7 +36,7 @@ def operator(name):
         name=name,
         namespace='book-planner',
         values=[
-            'src/operators/%s/values.yaml' % name
+            'src/cmd/operators/%s/values.yaml' % name
         ],
         set=[
             'image=%s' % name

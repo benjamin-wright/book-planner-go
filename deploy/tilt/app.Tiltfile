@@ -1,55 +1,8 @@
-def internal_api(path, name, sets=[]):
-    app(path, name, sets)
-
-def secure_api(basepath, path, name, sets=[]):
-    app(
-        path,
-        name,
-        sets + [
-            'path=/api/%s' % name,
-            'basepath=%s' % basepath,
-        ],
-        True
-    )
-
-def insecure_api(basepath, path, name, sets=[]):
-    app(
-        path,
-        name,
-        sets + [
-            'path=/api/%s' % name,
-            'basepath=%s' % basepath,
-        ]
-    )
-
-def secure_page(basepath, path, name, sets=[]):
-    app(
-        path,
-        name,
-        sets + [
-            'path=/%s' % name,
-            'basepath=%s' % basepath,
-        ],
-        True
-    )
-
-def insecure_page(basepath, path, name, sets=[]):
-    app(
-        path,
-        name,
-        sets + [
-            'path=/%s' % name,
-            'basepath=%s' % basepath,
-        ]
-    )
-
-def app(path, name, sets, secure = False):
+def app(path, name, base_url):
     custom_build(
-        '%s-%s' % (path, name),
-        'just build src/%s/%s $EXPECTED_REF' % (path, name),
-        [
-            'src/%s/%s' % (path, name)
-        ],
+        name,
+        'just build %s $EXPECTED_REF' % path,
+        [ path ],
         ignore = [
             'dist/*',
             '**/*_test.go'
@@ -57,34 +10,33 @@ def app(path, name, sets, secure = False):
     )
 
     # local_resource(
-    #     '%s-%s-test' % (path, name),
+    #     '%s-test' % fullname,
     #     'just test src/%s/%s' % (path, name),
-    #     deps = [name],
     #     auto_init = False,
     #     trigger_mode = TRIGGER_MODE_MANUAL
     # )
 
     # local_resource(
-    #     '%s-%s-int-test' % (path, name),
+    #     '%s-int-test' % fullname,
     #     'just int-test src/%s/%s' % (path, name),
-    #     deps = [name],
     #     auto_init = False,
     #     trigger_mode = TRIGGER_MODE_MANUAL
     # )
 
     k8s_yaml(helm(
         'deploy/helm/app',
-        name='%s-%s' % (path, name),
+        name=name,
         namespace='book-planner',
+        values=['%s/values.yaml' % path],
         set=[
-            'name=%s-%s' % (path, name),
-            'image=%s-%s' % (path, name),
-            'secure=%s' % secure,
-        ] + sets,
+            "name=%s" % name,
+            "image=%s" % name,
+            "baseUrl=%s" % base_url
+        ]
     ))
 
     k8s_resource(
-        '%s-%s' % (path, name),
+        name,
         auto_init = True,
         trigger_mode = TRIGGER_MODE_MANUAL
     )

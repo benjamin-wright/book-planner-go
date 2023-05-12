@@ -35,7 +35,7 @@ type ServerOptions struct {
 	Children    []component.Component
 	WASMModules []WASMModule
 	PageHandler func(r *http.Request) any
-	PostHandler func(w http.ResponseWriter, r *http.Request) any
+	PostHandler func(w http.ResponseWriter, r *http.Request)
 }
 
 type WASMModule struct {
@@ -132,7 +132,10 @@ func Run(options ServerOptions) error {
 			return
 		}
 
-		data := options.PageHandler(r)
+		var data interface{}
+		if options.PageHandler != nil {
+			data = options.PageHandler(r)
+		}
 
 		context := context{
 			Static:  sc,
@@ -181,6 +184,7 @@ func Run(options ServerOptions) error {
 
 func fileHandler(contentType string, data []byte) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		zap.S().Infof("Serving file: %s", r.URL.Path)
 		w.Header().Set("content-type", contentType)
 		w.Write(data)
 	}

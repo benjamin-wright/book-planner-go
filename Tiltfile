@@ -2,17 +2,18 @@ allow_k8s_contexts(['book-planner'])
 load('ext://namespace', 'namespace_yaml')
 load('./deploy/tilt/operator.Tiltfile', 'operator')
 load('./deploy/tilt/database.Tiltfile', 'redis', 'cockroach')
-load('./deploy/tilt/app.Tiltfile', 'secure_api', 'insecure_api', 'internal_api')
-load('./deploy/tilt/app.Tiltfile', 'secure_page', 'insecure_page')
+load('./deploy/tilt/app.Tiltfile', 'app')
 
-basepath = 'http://localhost'
+base_url = 'http://localhost'
 
 k8s_yaml(namespace_yaml('book-planner'))
 
 operator('db')
-redis('auth-redis', '128Mi')
 
-insecure_api(basepath, 'apis', 'auth', ['env.LOGIN_URL=%s/login' % basepath])
-insecure_page(basepath, 'pages', 'login')
+redis('redis', '128Mi')
 
-secure_page(basepath, 'pages', 'home')
+app('src/cmd/apis/auth', 'apis-auth', base_url)
+app('src/cmd/pages/login', 'pages-login', base_url)
+app('src/cmd/pages/register', 'pages-register', base_url)
+
+app('src/cmd/pages/home', 'pages-home', base_url)

@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"ponglehub.co.uk/book-planner-go/src/operators/db/internal/services/k8s/crds"
+	"ponglehub.co.uk/book-planner-go/src/cmd/operators/db/internal/services/k8s/crds"
 	"ponglehub.co.uk/book-planner-go/src/pkg/k8s_generic"
 )
 

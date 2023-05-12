@@ -1,0 +1,10 @@
+# name:
+# baseUrl:
+# image:
+
+path: "/register"
+secure: false
+
+env:
+  SUBMIT_URL: "{{ .baseUrl }}/register"
+  REDIRECT_URL: "{{ .baseUrl }}/home"

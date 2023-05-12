@@ -1,0 +1,8 @@
+# name:
+# baseUrl:
+# image:
+
+path: "/login"
+secure: false
+env:
+  REGISTER_URL: "{{ .Values.baseUrl }}/register"

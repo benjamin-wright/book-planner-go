@@ -1,0 +1,10 @@
+{{- if .Values.redis }}
+apiVersion: ponglehub.co.uk/v1alpha1
+kind: RedisClient
+metadata:
+  name: {{ .Values.name }}
+spec:
+  deployment: {{ .Values.redis.deployment }}
+  unit: {{ .Values.redis.unit }}
+  secret: {{ .Values.redis.secret }}
+{{- end }}

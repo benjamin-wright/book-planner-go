@@ -8,9 +8,9 @@ import (
 
 func Connect(config ConnectConfig) (*redis.Client, error) {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("https://%s:%d", config.Host, config.Port),
+		Addr:     fmt.Sprintf("%s:%d", config.Host, config.Port),
 		Password: "",
-		DB:       config.Database,
+		DB:       config.Unit,
 	})
 
 	return rdb, nil

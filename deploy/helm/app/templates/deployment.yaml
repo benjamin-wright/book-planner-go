@@ -15,10 +15,16 @@ spec:
       containers:
       - name: app
         image: "{{ .Values.image }}"
-        {{- if .Values.redis }}
+        {{- if or .Values.secureEnv .Values.redis }}
         envFrom:
+        {{- if .Values.redis }}
         - secretRef:
             name: "{{ .Values.redis.secret }}"
+        {{- end }}
+        {{- if .Values.secureEnv }}
+        - secretRef:
+            name: "{{ .Values.name }}-secure-env"
+        {{- end }}
         {{- end }}
         env:
         - name: PROXY_PREFIX

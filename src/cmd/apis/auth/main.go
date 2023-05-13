@@ -3,53 +3,40 @@ package main
 import (
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/internal/tokens"
+	"ponglehub.co.uk/book-planner-go/src/pkg/web/api"
 )
 
 func main() {
 	loginURL := os.Getenv("LOGIN_URL")
+	keyfile := tokens.Keyfile(os.Getenv("TOKEN_KEYFILE"))
 
-	logger, _ := zap.NewDevelopment()
-	zap.ReplaceGlobals(logger)
+	api.Run(api.RunOptions{
+		GetHandler: func(c *gin.Context) {
+			token, err := c.Cookie("ponglehub.login")
+			if err != nil {
+				zap.S().Info("No cookie token")
+				c.Redirect(http.StatusTemporaryRedirect, loginURL)
+				return
+			}
 
-	t, err := tokens.New([]byte{})
-	if err != nil {
-		zap.S().Errorf("Failed to create token client: %+v", err)
-	}
+			claims, err := keyfile.Parse(token)
+			if err != nil {
+				zap.S().Infof("Failed to parse claims: %+v", err)
+				c.Redirect(http.StatusTemporaryRedirect, loginURL)
+				return
+			}
 
-	_, err = t.NewToken("hello", "login", 5*time.Second)
-	if err != nil {
-		zap.S().Errorf("Failed to create a test token: %+v", err)
-	}
+			if claims.Kind != "Login" {
+				zap.S().Infof("Non-login claim: %+v", claims)
+				c.Redirect(http.StatusTemporaryRedirect, loginURL)
+				return
+			}
 
-	r := gin.Default()
-	r.GET("/", func(c *gin.Context) {
-		token, err := c.Cookie("ponglehub.login")
-		if err != nil {
-			zap.S().Info("No cookie token")
-			c.Redirect(http.StatusTemporaryRedirect, loginURL)
-			return
-		}
-
-		claims, err := t.Parse(token)
-		if err != nil {
-			zap.S().Infof("Failed to parse claims: %+v", err)
-			c.Redirect(http.StatusTemporaryRedirect, loginURL)
-			return
-		}
-
-		if claims.Kind != "Login" {
-			zap.S().Infof("Non-login claim: %+v", claims)
-			c.Redirect(http.StatusTemporaryRedirect, loginURL)
-			return
-		}
-
-		c.Header("X-auth-user", claims.Subject)
+			c.Header("X-auth-user", claims.Subject)
+		},
 	})
-
-	r.Run("0.0.0.0:80")
 }

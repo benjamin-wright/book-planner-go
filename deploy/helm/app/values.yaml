@@ -5,6 +5,8 @@
 replicas: 1
 env: {}
 
+secureEnv: {}
+
 # path:
 secure: true
 

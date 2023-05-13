@@ -1,0 +1,14 @@
+# name:
+# baseUrl:
+# image:
+
+env:
+  LOGIN_URL: "{{ .Values.baseUrl }}/register"
+
+secureEnv:
+  TOKEN_KEYFILE: "some-super-secret-string"
+
+redis:
+  deployment: "redis"
+  unit: 0
+  secret: "auth-register-redis"

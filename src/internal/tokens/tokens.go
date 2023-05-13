@@ -6,22 +6,16 @@ import (
 	"time"
 
 	r "github.com/go-redis/redis/v8"
-	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
 	"ponglehub.co.uk/book-planner-go/src/pkg/redis"
 )
 
-type Claims struct {
-	Subject string
-	Kind    string
-}
-
 type Tokens struct {
-	key   []byte
-	redis *r.Client
+	keyfile Keyfile
+	redis   *r.Client
 }
 
-func New(keyfile []byte) (*Tokens, error) {
+func New(keyfile Keyfile) (*Tokens, error) {
 	config, err := redis.ConfigFromEnv()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get redis connection config: %+v", err)
@@ -33,8 +27,8 @@ func New(keyfile []byte) (*Tokens, error) {
 	}
 
 	tokens := Tokens{
-		key:   keyfile,
-		redis: r,
+		keyfile: keyfile,
+		redis:   r,
 	}
 
 	return &tokens, nil
@@ -64,50 +58,22 @@ func (t *Tokens) GetToken(id string, kind string) (string, error) {
 }
 
 func (t *Tokens) NewToken(id string, kind string, expiration time.Duration) (string, error) {
-	key := fmt.Sprintf("%s.%s", id, kind)
-
-	token := jwt.NewWithClaims(
-		jwt.SigningMethodHS256,
-		jwt.MapClaims{
-			"Subject": id,
-			"Kind":    kind,
-		},
-	)
-
-	tokenString, err := token.SignedString(t.key)
+	token, err := t.keyfile.New(id, kind, expiration)
 	if err != nil {
-		return "", fmt.Errorf("failed to sign token: %+v", err)
+		return "", fmt.Errorf("failed to create a new token: %+v", err)
 	}
 
-	err = t.redis.Set(context.Background(), key, tokenString, expiration).Err()
+	key := fmt.Sprintf("%s.%s", id, kind)
+	err = t.redis.Set(context.Background(), key, token, expiration).Err()
 	if err != nil {
 		return "", fmt.Errorf("failed to save token: %+v", err)
 	}
 
-	return tokenString, nil
+	return token, nil
 }
 
 func (t *Tokens) Parse(token string) (Claims, error) {
-	tokenObj, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return t.key, nil
-	})
-	if err != nil {
-		return Claims{}, fmt.Errorf("failed to parse token: %+v", err)
-	}
-
-	if claims, ok := tokenObj.Claims.(jwt.MapClaims); ok {
-		return Claims{
-			Subject: claims["Subject"].(string),
-			Kind:    claims["Kind"].(string),
-		}, nil
-
-	} else {
-		return Claims{}, fmt.Errorf("invalid claims in parsed token")
-	}
+	return t.keyfile.Parse(token)
 }
 
 func (t *Tokens) AddPasswordHash(id string, password string) error {

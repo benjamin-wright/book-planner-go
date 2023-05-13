@@ -20,4 +20,5 @@ def db(name, db_type, storage):
         new_name=name,
         objects=['%s:%sdb' % (name, db_type)],
         extra_pod_selectors=[{'app': name}],
+        labels=['infra'],
     )

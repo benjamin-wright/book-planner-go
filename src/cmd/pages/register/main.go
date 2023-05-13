@@ -2,11 +2,13 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"net/http"
 	"os"
 	"strings"
 
 	"go.uber.org/zap"
+	"ponglehub.co.uk/book-planner-go/src/cmd/apis/auth/register/pkg/client"
 	"ponglehub.co.uk/book-planner-go/src/pkg/api/validation"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/runtime"
 )
@@ -23,6 +25,8 @@ func main() {
 	proxyPrefix := os.Getenv("PROXY_PREFIX")
 	submitURL := os.Getenv("SUBMIT_URL")
 	redirectURL := os.Getenv("REDIRECT_URL")
+
+	cli := client.New(os.Getenv("REGISTER_API_URL"))
 
 	runtime.Run(runtime.ServerOptions{
 		Template: content,
@@ -71,6 +75,23 @@ func main() {
 			username := r.Form.Get("username")
 
 			zap.S().Infof("Adding new user %s with password %s", username, password)
+
+			err = cli.Register(r.Context(), client.PostBody{
+				Username: username,
+				Password: password,
+			})
+			if err != nil {
+				zap.S().Errorf("error sending registration request: %+v", err)
+
+				if errors.Is(err, client.UserExistsError) {
+					http.Redirect(w, r, baseURL+proxyPrefix+"?error=exists", http.StatusFound)
+				} else {
+					http.Redirect(w, r, baseURL+proxyPrefix+"?error=unknown", http.StatusFound)
+				}
+
+				return
+			}
+
 			http.Redirect(w, r, redirectURL, http.StatusFound)
 		},
 	})

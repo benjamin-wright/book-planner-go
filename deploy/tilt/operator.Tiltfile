@@ -46,5 +46,6 @@ def operator(name):
     k8s_resource(
         name,
         auto_init = True,
-        trigger_mode = TRIGGER_MODE_MANUAL
+        trigger_mode = TRIGGER_MODE_MANUAL,
+        labels=['infra']
     )

@@ -23,6 +23,6 @@ metadata:
   name: {{ .Values.name }}-auth
 spec:
   forwardAuth:
-    address: http://apis-auth.{{ .Release.Namespace }}.svc.cluster.local
+    address: http://apis-verify.{{ .Release.Namespace }}.svc.cluster.local
 {{- end }}
 {{- end }}

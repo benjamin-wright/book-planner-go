@@ -8,3 +8,4 @@ secure: false
 env:
   SUBMIT_URL: "{{ .baseUrl }}/register"
   REDIRECT_URL: "{{ .baseUrl }}/home"
+  REGISTER_API_URL: "http://apis-register.{{ .Release.Namespace }}.svc.cluster.local"

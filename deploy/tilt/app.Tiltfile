@@ -1,4 +1,4 @@
-def app(path, name, base_url):
+def app(path, name, base_url, labels=[]):
     custom_build(
         name,
         'just build %s $EXPECTED_REF' % path,
@@ -38,5 +38,6 @@ def app(path, name, base_url):
     k8s_resource(
         name,
         auto_init = True,
-        trigger_mode = TRIGGER_MODE_MANUAL
+        trigger_mode = TRIGGER_MODE_MANUAL,
+        labels=labels,
     )

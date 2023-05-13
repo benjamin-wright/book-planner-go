@@ -11,11 +11,10 @@ import (
 )
 
 type Tokens struct {
-	keyfile Keyfile
-	redis   *r.Client
+	redis *r.Client
 }
 
-func New(keyfile Keyfile) (*Tokens, error) {
+func New() (*Tokens, error) {
 	config, err := redis.ConfigFromEnv()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get redis connection config: %+v", err)
@@ -27,8 +26,7 @@ func New(keyfile Keyfile) (*Tokens, error) {
 	}
 
 	tokens := Tokens{
-		keyfile: keyfile,
-		redis:   r,
+		redis: r,
 	}
 
 	return &tokens, nil
@@ -57,23 +55,14 @@ func (t *Tokens) GetToken(id string, kind string) (string, error) {
 	return value, nil
 }
 
-func (t *Tokens) NewToken(id string, kind string, expiration time.Duration) (string, error) {
-	token, err := t.keyfile.New(id, kind, expiration)
-	if err != nil {
-		return "", fmt.Errorf("failed to create a new token: %+v", err)
-	}
-
+func (t *Tokens) AddToken(token string, id string, kind string, expiration time.Duration) (string, error) {
 	key := fmt.Sprintf("%s.%s", id, kind)
-	err = t.redis.Set(context.Background(), key, token, expiration).Err()
+	err := t.redis.Set(context.Background(), key, token, expiration).Err()
 	if err != nil {
 		return "", fmt.Errorf("failed to save token: %+v", err)
 	}
 
 	return token, nil
-}
-
-func (t *Tokens) Parse(token string) (Claims, error) {
-	return t.keyfile.Parse(token)
 }
 
 func (t *Tokens) AddPasswordHash(id string, password string) error {

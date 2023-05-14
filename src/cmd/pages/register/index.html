@@ -1,5 +1,6 @@
 <section>
     <p>Welcome to the Book Planner! Sign up for a new account and start writing!</p>
+    <p>Already got an account? <a href="{{ .LoginURL }}">Log in instead.</a></p>
     <form action="{{ .SubmitURL }}" method="post">
         <label for="username">Username:</label>
         <input id="username" name="username" type="text" />

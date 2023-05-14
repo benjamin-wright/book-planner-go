@@ -8,7 +8,6 @@ import (
 	"html/template"
 	"net/http"
 	"os"
-	"strings"
 
 	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/components/footer"
@@ -165,6 +164,11 @@ func Run(options ServerOptions) error {
 		mux.HandleFunc(proxyPrefix+"/"+path, fileHandler("text/css", data))
 	}
 
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		zap.S().Infof("Not found: %s", r.URL.Path)
+		http.NotFound(w, r)
+	})
+
 	zap.S().Info("running server...")
 
 	err := http.ListenAndServe("0.0.0.0:80", mux)
@@ -192,7 +196,7 @@ type ServeFile struct {
 	MimeType string
 }
 
-func RunFileServer(defaultRedirect string, files []ServeFile) error {
+func RunFileServer(files []ServeFile) error {
 	logger, _ := zap.NewDevelopment()
 	zap.ReplaceGlobals(logger)
 
@@ -205,19 +209,6 @@ func RunFileServer(defaultRedirect string, files []ServeFile) error {
 	for _, file := range files {
 		mux.HandleFunc(proxyPrefix+"/"+file.Path, fileHandler(file.MimeType, file.Data))
 	}
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		accept := strings.Split(r.Header.Get("Accept"), ",")
-
-		for _, mimetype := range accept {
-			if mimetype == "text/html" {
-				zap.S().Infof("redirecting to %s", defaultRedirect)
-				http.Redirect(w, r, defaultRedirect, http.StatusFound)
-			}
-		}
-
-		http.NotFound(w, r)
-	})
 
 	zap.S().Info("running server...")
 

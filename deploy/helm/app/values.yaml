@@ -9,6 +9,7 @@ secureEnv: {}
 
 # path:
 secure: true
+# defaultRoute:
 
 # redis:
 #   deployment:

@@ -4,7 +4,7 @@ labels: [ frontend ]
 # baseUrl:
 # image:
 
-path: "/"
+path: "/static"
 secure: false
 
 env:

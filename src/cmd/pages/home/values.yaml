@@ -4,3 +4,4 @@ labels: [ frontend ]
 # image:
 
 path: "/home"
+isDefaultPage: true

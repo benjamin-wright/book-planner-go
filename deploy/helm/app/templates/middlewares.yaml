@@ -1,0 +1,18 @@
+{{- if .Values.isValidationServer }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: auth-validator
+spec:
+  forwardAuth:
+    address: http://{{ .Values.name }}.{{ .Release.Namespace }}.svc.cluster.local
+{{- else if .Values.isDefaultPage }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: default-redirect
+spec:
+  redirectRegex:
+    regex: ".*"
+    replacement: "{{ .Values.baseUrl }}{{ .Values.path }}"
+{{- end }}

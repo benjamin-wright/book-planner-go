@@ -15,14 +15,18 @@ spec:
       scheme: http
 {{- if .Values.secure }}
     middlewares:
-    - name: {{ .Values.name }}-auth
----
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: {{ .Values.name }}-auth
-spec:
-  forwardAuth:
-    address: http://apis-verify.{{ .Release.Namespace }}.svc.cluster.local
+    - name: auth-validator
+{{- end }}
+{{- if .Values.isDefaultPage }}
+  - kind: Rule
+    match: PathPrefix(`/`)
+    middlewares:
+    - name: default-redirect
+    services:
+    - kind: Service
+      name: {{ .Values.name }}
+      namespace: {{ .Release.Namespace }}
+      port: 80
+      scheme: http
 {{- end }}
 {{- end }}

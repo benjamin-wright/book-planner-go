@@ -18,11 +18,13 @@ var content string
 
 type Context struct {
 	SubmitURL string
+	LoginURL  string
 }
 
 func main() {
 	baseURL := os.Getenv("BASE_URL")
 	proxyPrefix := os.Getenv("PROXY_PREFIX")
+	loginURL := os.Getenv("LOGIN_URL")
 	submitURL := os.Getenv("SUBMIT_URL")
 	redirectURL := os.Getenv("REDIRECT_URL")
 
@@ -34,6 +36,7 @@ func main() {
 		PageHandler: func(r *http.Request) any {
 			return Context{
 				SubmitURL: submitURL,
+				LoginURL:  loginURL,
 			}
 		},
 		PostHandler: func(w http.ResponseWriter, r *http.Request) {

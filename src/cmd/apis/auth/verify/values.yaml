@@ -8,3 +8,5 @@ env:
 
 secureEnv:
   TOKEN_KEYFILE: "some-super-secret-string"
+
+isValidationServer: true

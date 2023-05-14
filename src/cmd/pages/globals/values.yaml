@@ -6,3 +6,6 @@ labels: [ frontend ]
 
 path: "/"
 secure: false
+
+env:
+  DEFAULT_REDIRECT: "{{ .Values.baseUrl }}/home"

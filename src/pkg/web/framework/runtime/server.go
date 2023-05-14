@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"net/http"
 	"os"
+	"strings"
 
 	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/components/footer"
@@ -191,7 +192,7 @@ type ServeFile struct {
 	MimeType string
 }
 
-func RunFileServer(files []ServeFile) error {
+func RunFileServer(defaultRedirect string, files []ServeFile) error {
 	logger, _ := zap.NewDevelopment()
 	zap.ReplaceGlobals(logger)
 
@@ -204,6 +205,19 @@ func RunFileServer(files []ServeFile) error {
 	for _, file := range files {
 		mux.HandleFunc(proxyPrefix+"/"+file.Path, fileHandler(file.MimeType, file.Data))
 	}
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		accept := strings.Split(r.Header.Get("Accept"), ",")
+
+		for _, mimetype := range accept {
+			if mimetype == "text/html" {
+				zap.S().Infof("redirecting to %s", defaultRedirect)
+				http.Redirect(w, r, defaultRedirect, http.StatusFound)
+			}
+		}
+
+		http.NotFound(w, r)
+	})
 
 	zap.S().Info("running server...")
 

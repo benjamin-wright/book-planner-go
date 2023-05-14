@@ -1,5 +1,11 @@
 <section>
-    <p>Please log in to resume your literary journey. New to the Book Planner? Why not <a href="{{ .RegisterURL }}">create a new account</a>?</p>
+    {{- if .Registered }}
+    <p>Thanks for signing up! You can now log in with your new password:</p>
+    {{- else }}
+    <p>
+        Please log in to resume your literary journey. New to the Book Planner? Why not <a href="{{ .RegisterURL }}">create a new account</a>?
+    </p>
+    {{- end }}
     <form>
         
     </form>

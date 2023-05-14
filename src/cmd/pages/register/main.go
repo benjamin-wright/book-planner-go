@@ -30,7 +30,7 @@ func main() {
 
 	runtime.Run(runtime.ServerOptions{
 		Template: content,
-		Title:    "Book Planner",
+		Title:    "Book Planner: Register",
 		PageHandler: func(r *http.Request) any {
 			return Context{
 				SubmitURL: submitURL,

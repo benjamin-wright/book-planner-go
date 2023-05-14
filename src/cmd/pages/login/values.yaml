@@ -1,4 +1,5 @@
-# name:
+name: pages-login
+labels: [ auth-frontend ]
 # baseUrl:
 # image:
 

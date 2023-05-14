@@ -9,7 +9,7 @@ import (
 
 	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/cmd/apis/auth/register/pkg/client"
-	"ponglehub.co.uk/book-planner-go/src/pkg/api/validation"
+	"ponglehub.co.uk/book-planner-go/src/pkg/web/api/validation"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/runtime"
 )
 

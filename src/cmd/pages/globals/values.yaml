@@ -1,0 +1,8 @@
+name: values-globals
+labels: [ frontend ]
+
+# baseUrl:
+# image:
+
+path: "/"
+secure: false

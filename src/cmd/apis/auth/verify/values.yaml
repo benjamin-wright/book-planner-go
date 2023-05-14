@@ -1,4 +1,5 @@
-# name:
+name: apis-verify
+labels: [ auth-backend ]
 # baseUrl:
 # image:
 

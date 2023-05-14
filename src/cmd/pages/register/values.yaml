@@ -1,4 +1,6 @@
-# name:
+name: pages-register
+labels: [ auth-frontend ]
+
 # baseUrl:
 # image:
 

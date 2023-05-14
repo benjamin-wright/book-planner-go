@@ -26,9 +26,6 @@ var wasmExec []byte
 //go:embed templates/wasm_load.js
 var wasmLoad string
 
-//go:embed templates/styles.css
-var styles []byte
-
 type ServerOptions struct {
 	Template    string
 	Title       string
@@ -83,16 +80,14 @@ func Run(options ServerOptions) error {
 
 	t := getPageComponent(options)
 
-	css := map[string][]byte{
-		"styles.css": styles,
-	}
+	css := map[string][]byte{}
 	js := map[string][]byte{}
 	wasm := map[string][]byte{}
 
 	sc := staticContext{
 		Title:      options.Title,
 		Scripts:    []string{},
-		CSS:        []string{"styles.css"},
+		CSS:        []string{},
 		PathPrefix: basePath + proxyPrefix,
 	}
 
@@ -188,4 +183,37 @@ func fileHandler(contentType string, data []byte) func(w http.ResponseWriter, r 
 		w.Header().Set("content-type", contentType)
 		w.Write(data)
 	}
+}
+
+type ServeFile struct {
+	Path     string
+	Data     []byte
+	MimeType string
+}
+
+func RunFileServer(files []ServeFile) error {
+	logger, _ := zap.NewDevelopment()
+	zap.ReplaceGlobals(logger)
+
+	proxyPrefix := os.Getenv("PROXY_PREFIX")
+	if proxyPrefix == "/" {
+		proxyPrefix = ""
+	}
+
+	mux := http.NewServeMux()
+	for _, file := range files {
+		mux.HandleFunc(proxyPrefix+"/"+file.Path, fileHandler(file.MimeType, file.Data))
+	}
+
+	zap.S().Info("running server...")
+
+	err := http.ListenAndServe("0.0.0.0:80", mux)
+	if errors.Is(err, http.ErrServerClosed) {
+		fmt.Printf("server closed\n")
+	} else if err != nil {
+		fmt.Printf("error starting server: %s\n", err)
+		return err
+	}
+
+	return nil
 }

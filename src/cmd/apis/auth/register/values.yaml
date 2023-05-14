@@ -1,4 +1,6 @@
-# name:
+name: apis-register
+labels: [ auth-backend ]
+
 # baseUrl:
 # image:
 

@@ -9,3 +9,7 @@ A golang-based microservices app for planning novels and books. A test bed for t
 - k3d and tilt-driven development environment
 
 Prime directive is minimal resource footprint in terms of development overhead and runtime overhead
+
+## ToDo
+
+- remove static server redirect and add app chart default route bool

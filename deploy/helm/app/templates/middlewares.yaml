@@ -6,6 +6,8 @@ metadata:
 spec:
   forwardAuth:
     address: http://{{ .Values.name }}.{{ .Release.Namespace }}.svc.cluster.local
+    authResponseHeaders:
+    - X-Auth-User
 {{- else if .Values.isDefaultPage }}
 apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
@@ -14,5 +16,5 @@ metadata:
 spec:
   redirectRegex:
     regex: ".*"
-    replacement: "{{ .Values.baseUrl }}{{ .Values.path }}"
+    replacement: "http://{{ .Values.hostname }}{{ .Values.path }}"
 {{- end }}

@@ -1,0 +1,97 @@
+:root {
+    --main-bg-color: #f2f2f2;
+    --main-fg-color: #685454;
+    --highlight-color: #ea8a8a;
+    --lowlight-color: #ebd5d5;
+    --disabled-color: #c9c9c9;
+}
+
+h1 {
+    margin: 0 -0.35em 0 0;
+    padding: 1em 0;
+    font-weight: lighter;
+    letter-spacing: 0.35em;
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    background-color: var(--main-bg-color);
+    color: var(--main-fg-color);
+    margin: 0;
+    padding: 0;
+    
+    font-family: helveticaneue, helvetica, arial, sans-serif;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+}
+
+header a {
+    text-transform: capitalize;
+    text-decoration: none;
+    color: var(--main-fg-color);
+}
+
+.fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+.centered {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.vertical {
+    display: flex;
+    flex-direction: column;
+}
+
+.horizontal {
+    display: flex;
+    gap: 1em;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: fit-content(10%) auto;
+    column-gap: 0.4em;
+    row-gap: 1em;
+}
+
+input {
+    background: none;
+    border: none;
+    outline: none;
+
+    background-color: var(--main-bg-color);
+    color: var(--main-fg-color);
+    
+    font-family: helveticaneue, helvetica, arial, sans-serif;
+}
+
+input:not([type='submit']) {    
+    border-bottom: solid 1px var(--main-fg-color);
+}
+
+.button {
+    border: solid 1px var(--main-fg-color);
+    min-width: 6em;
+}
+
+.button:hover, .button:active, .button:focus {
+    background-color: var(--lowlight-color);
+}
+
+.button:disabled {
+    background-color: var(--disabled-color);
+}

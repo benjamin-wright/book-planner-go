@@ -29,9 +29,9 @@ spec:
         env:
         - name: PROXY_PREFIX
           value: "{{ .Values.path }}"
-        {{- if .Values.baseUrl }}
-        - name: BASE_URL
-          value: "{{ .Values.baseUrl }}"
+        {{- if .Values.hostname }}
+        - name: WEB_HOSTNAME
+          value: "{{ .Values.hostname }}"
         {{- end }}
         {{- range $key, $value := .Values.env }}
         - name: "{{ $key }}"

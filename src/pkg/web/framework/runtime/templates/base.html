@@ -12,8 +12,12 @@
         <link rel="stylesheet" href="/static/styles.css">
     </head>
     <body>
+        {{- if .Static.ShowHeaders }}
         {{ block "components.header" . }}{{ end }}
+        {{- end }}
         {{ block "page" .Dynamic }}{{ end }}
+        {{- if .Static.ShowHeaders }}
         {{ block "components.footer" . }}{{ end }}
+        {{- end }}
     </body>
 </html>

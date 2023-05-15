@@ -22,7 +22,7 @@ type Context struct {
 }
 
 func main() {
-	baseURL := os.Getenv("BASE_URL")
+	hostname := os.Getenv("WEB_HOSTNAME")
 	proxyPrefix := os.Getenv("PROXY_PREFIX")
 	loginURL := os.Getenv("LOGIN_URL")
 	submitURL := os.Getenv("SUBMIT_URL")
@@ -45,7 +45,7 @@ func main() {
 			err := r.ParseForm()
 			if err != nil {
 				zap.S().Errorf("error parsing form: %+v", err)
-				http.Redirect(w, r, baseURL+proxyPrefix+"?error=unknown", http.StatusFound)
+				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=unknown", http.StatusFound)
 				return
 			}
 
@@ -56,7 +56,7 @@ func main() {
 				for _, field := range missing {
 					err = append(err, "missing="+field)
 				}
-				http.Redirect(w, r, baseURL+proxyPrefix+"?"+strings.Join(err, "&"), http.StatusFound)
+				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?"+strings.Join(err, "&"), http.StatusFound)
 				return
 			}
 
@@ -65,19 +65,19 @@ func main() {
 
 			if password != confirm {
 				zap.S().Warn("mistmatched passwords")
-				http.Redirect(w, r, baseURL+proxyPrefix+"?error=password", http.StatusFound)
+				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=password", http.StatusFound)
 				return
 			}
 
 			if !validation.CheckPasswordComplexity(password) {
 				zap.S().Warn("password complexity")
-				http.Redirect(w, r, baseURL+proxyPrefix+"?error=complexity", http.StatusFound)
+				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=complexity", http.StatusFound)
 				return
 			}
 
 			username := r.Form.Get("username")
 
-			zap.S().Infof("Adding new user %s with password %s", username, password)
+			zap.S().Infof("Adding new user %s", username)
 
 			err = cli.Register(r.Context(), client.PostBody{
 				Username: username,
@@ -87,9 +87,9 @@ func main() {
 				zap.S().Errorf("error sending registration request: %+v", err)
 
 				if errors.Is(err, client.UserExistsError) {
-					http.Redirect(w, r, baseURL+proxyPrefix+"?error=exists", http.StatusFound)
+					http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=exists", http.StatusFound)
 				} else {
-					http.Redirect(w, r, baseURL+proxyPrefix+"?error=unknown", http.StatusFound)
+					http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=unknown", http.StatusFound)
 				}
 
 				return

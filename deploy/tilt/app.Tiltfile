@@ -5,7 +5,7 @@ def has_element(items, item):
 
     return False
 
-def apps(path, base_url):
+def apps(path, hostname):
     files = str(local(
         'find %s -name values.yaml' % path,
         echo_off=True,
@@ -58,7 +58,7 @@ def apps(path, base_url):
             values=[file],
             set=[
                 "image=%s" % name,
-                "baseUrl=%s" % base_url
+                "hostname=%s" % hostname
             ]
         ))
 

@@ -1,6 +1,6 @@
 name: pages-home
 labels: [ frontend ]
-# baseUrl:
+# hostname:
 # image:
 
 path: "/home"

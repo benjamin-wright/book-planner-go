@@ -9,3 +9,28 @@ A golang-based microservices app for planning novels and books. A test bed for t
 - k3d and tilt-driven development environment
 
 Prime directive is minimal resource footprint in terms of development overhead and runtime overhead
+
+## Gotchas
+
+While tinygo are sorting out their GC issues:
+
+```shell
+cp $(tinygo env TINYGOROOT)/targets/wasm_exec.js templates/wasm_exec.js
+```
+
+then swap in:
+```js
+// func finalizeRef(v ref)
+"syscall/js.finalizeRef": (v_addr) => {
+    // Note: TinyGo does not support finalizers so this is only called
+    // for one specific case, by js.go:jsString.
+    const id = mem().getUint32(v_addr, true);
+    this._goRefCounts[id]--;
+    if (this._goRefCounts[id] === 0) {
+        const v = this._values[id];
+        this._values[id] = null;
+        this._ids.delete(v);
+        this._idPool.push(id);
+    }
+},
+```

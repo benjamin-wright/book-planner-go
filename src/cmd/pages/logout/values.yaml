@@ -1,0 +1,9 @@
+name: pages-logout
+labels: [ auth-frontend ]
+# hostname:
+# image:
+
+path: "/logout"
+
+env:
+  LOGIN_URL: "http://{{ .Values.hostname }}/login"

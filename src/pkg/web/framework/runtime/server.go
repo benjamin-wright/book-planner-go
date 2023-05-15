@@ -29,6 +29,7 @@ var wasmLoad string
 type ServerOptions struct {
 	Template    string
 	Title       string
+	HideHeaders bool
 	Children    []component.Component
 	WASMModules []WASMModule
 	PageHandler func(r *http.Request) any
@@ -42,14 +43,22 @@ type WASMModule struct {
 }
 
 type staticContext struct {
-	Title      string
-	Scripts    []string
-	CSS        []string
-	PathPrefix string
+	Title       string
+	Scripts     []string
+	CSS         []string
+	PathPrefix  string
+	HomeURL     string
+	LogoutURL   string
+	ShowHeaders bool
+}
+
+type requestContext struct {
+	User string
 }
 
 type context struct {
 	Static  staticContext
+	Request requestContext
 	Dynamic any
 }
 
@@ -76,7 +85,7 @@ func Run(options ServerOptions) error {
 	zap.ReplaceGlobals(logger)
 
 	proxyPrefix := os.Getenv("PROXY_PREFIX")
-	basePath := os.Getenv("BASE_PATH")
+	hostname := os.Getenv("WEB_HOSTNAME")
 
 	t := getPageComponent(options)
 
@@ -85,10 +94,13 @@ func Run(options ServerOptions) error {
 	wasm := map[string][]byte{}
 
 	sc := staticContext{
-		Title:      options.Title,
-		Scripts:    []string{},
-		CSS:        []string{},
-		PathPrefix: basePath + proxyPrefix,
+		Title:       options.Title,
+		Scripts:     []string{},
+		CSS:         []string{},
+		PathPrefix:  proxyPrefix,
+		ShowHeaders: !options.HideHeaders,
+		HomeURL:     "http://" + hostname,
+		LogoutURL:   "http://" + hostname + "/logout",
 	}
 
 	for _, module := range options.WASMModules {
@@ -107,7 +119,7 @@ func Run(options ServerOptions) error {
 
 		var script bytes.Buffer
 		err := t.Execute(&script, map[string]interface{}{
-			"Path": basePath + "/" + proxyPrefix + "/" + module.Path,
+			"Path": "http://" + hostname + proxyPrefix + "/" + module.Path,
 			"Name": module.Name,
 		})
 		if err != nil {
@@ -132,8 +144,13 @@ func Run(options ServerOptions) error {
 			data = options.PageHandler(r)
 		}
 
+		user := r.Header.Get("X-Auth-User")
+
 		context := context{
-			Static:  sc,
+			Static: sc,
+			Request: requestContext{
+				User: user,
+			},
 			Dynamic: data,
 		}
 

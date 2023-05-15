@@ -28,7 +28,9 @@ func (k *Keyfile) New(id string, kind string, expiration time.Duration) (string,
 		},
 	)
 
-	tokenString, err := token.SignedString(k)
+	key := []byte(*k)
+
+	tokenString, err := token.SignedString(key)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %+v", err)
 	}
@@ -42,7 +44,7 @@ func (k *Keyfile) Parse(token string) (Claims, error) {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 
-		return k, nil
+		return []byte(*k), nil
 	})
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenMalformed) {

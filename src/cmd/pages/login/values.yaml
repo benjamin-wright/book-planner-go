@@ -1,9 +1,12 @@
 name: pages-login
 labels: [ auth-frontend ]
-# baseUrl:
+# hostname:
 # image:
 
 path: "/login"
 secure: false
 env:
-  REGISTER_URL: "{{ .Values.baseUrl }}/register"
+  REGISTER_URL: "http://{{ .Values.hostname }}/register"
+  SUBMIT_URL: "http://{{ .Values.hostname}}/login"
+  REDIRECT_URL: "http://{{ .Values.hostname}}/home"
+  LOGIN_API_URL: "http://apis-login.{{ .Release.Namespace }}.svc.cluster.local"

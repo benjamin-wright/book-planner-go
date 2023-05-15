@@ -1,12 +1,20 @@
-<section>
+<aside>
+    <a class="button" href="{{ .RegisterURL }}">Register</a>
+</aside>
+<main class="fill centered vertical">
+    <h1>Book Planner</h1>
     {{- if .Registered }}
-    <p>Thanks for signing up! You can now log in with your new password:</p>
+    <p>Thanks for signing up! You can now log in with your new password</p>
     {{- else }}
-    <p>
-        Please log in to resume your literary journey. New to the Book Planner? Why not <a href="{{ .RegisterURL }}">create a new account</a>?
-    </p>
+    <p>Please log in to resume your literary journey</p>
     {{- end }}
-    <form>
-        
+    <form class="horizontal" action="{{ .SubmitURL }}" method="post">
+        <input id="submit" class="button" type="submit" value="Login" tabindex="0" disabled />
+        <section class="form-grid">
+            <label for="username">Username:</label>
+            <input id="username" name="username" type="text" autocomplete="username" onkeyup="wasm.exports.validate()" />
+            <label for="password">Password:</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" onkeyup="wasm.exports.validate()" />
+        </section>
     </form>
-</section>
+</main>

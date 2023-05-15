@@ -30,13 +30,13 @@ func main() {
 				return
 			}
 
-			if claims.Kind != "Login" {
+			if claims.Kind != "login" {
 				zap.S().Infof("Non-login claim: %+v", claims)
 				c.Redirect(http.StatusTemporaryRedirect, loginURL)
 				return
 			}
 
-			c.Header("X-auth-user", claims.Subject)
+			c.Header("X-Auth-User", claims.Subject)
 		},
 	})
 }

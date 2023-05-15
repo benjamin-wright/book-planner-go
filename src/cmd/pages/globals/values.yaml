@@ -1,11 +1,11 @@
 name: values-globals
 labels: [ frontend ]
 
-# baseUrl:
+# hostname:
 # image:
 
 path: "/static"
 secure: false
 
 env:
-  DEFAULT_REDIRECT: "{{ .Values.baseUrl }}/home"
+  DEFAULT_REDIRECT: "http://{{ .Values.hostname }}/home"

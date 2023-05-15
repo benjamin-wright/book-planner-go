@@ -1,12 +1,12 @@
 name: apis-verify
 labels: [ auth-backend ]
-# baseUrl:
+# hostname:
 # image:
 
 env:
-  LOGIN_URL: "{{ .Values.baseUrl }}/login"
+  LOGIN_URL: "http://{{ .Values.hostname }}/login"
 
 secureEnv:
-  TOKEN_KEYFILE: "some-super-secret-string"
+  TOKEN_KEYFILE: "abcdefg"
 
 isValidationServer: true

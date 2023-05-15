@@ -1,11 +1,11 @@
 name: apis-register
 labels: [ auth-backend ]
 
-# baseUrl:
+# hostname:
 # image:
 
 env:
-  LOGIN_URL: "{{ .Values.baseUrl }}/register"
+  LOGIN_URL: "http://{{ .Values.hostname }}/register"
 
 redis:
   deployment: "redis"

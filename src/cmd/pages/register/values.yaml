@@ -1,14 +1,14 @@
 name: pages-register
 labels: [ auth-frontend ]
 
-# baseUrl:
+# hostname:
 # image:
 
 path: "/register"
 secure: false
 
 env:
-  SUBMIT_URL: "{{ .baseUrl }}/register"
-  LOGIN_URL: "{{ .baseUrl }}/login"
-  REDIRECT_URL: "{{ .baseUrl }}/login?registered=true"
+  SUBMIT_URL: "{{ .hostname }}/register"
+  LOGIN_URL: "{{ .hostname }}/login"
+  REDIRECT_URL: "{{ .hostname }}/login?registered=true"
   REGISTER_API_URL: "http://apis-register.{{ .Release.Namespace }}.svc.cluster.local"

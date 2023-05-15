@@ -15,8 +15,6 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/component"
 )
 
-//go:generate sh -c "cp ${DOLLAR}(tinygo env TINYGOROOT)/targets/wasm_exec.js templates/wasm_exec.js"
-
 //go:embed templates/base.html
 var baseContent string
 

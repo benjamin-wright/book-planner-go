@@ -5,20 +5,22 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"strings"
 
 	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/cmd/apis/auth/register/pkg/client"
-	"ponglehub.co.uk/book-planner-go/src/pkg/web/api/validation"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/runtime"
 )
 
 //go:embed index.html
 var content string
 
+//go:embed module.wasm
+var wasm []byte
+
 type Context struct {
 	SubmitURL string
 	LoginURL  string
+	Error     string
 }
 
 func main() {
@@ -31,12 +33,24 @@ func main() {
 	cli := client.New(os.Getenv("REGISTER_API_URL"))
 
 	runtime.Run(runtime.ServerOptions{
-		Template: content,
-		Title:    "Book Planner: Register",
+		Template:    content,
+		Title:       "Book Planner: Register",
+		HideHeaders: true,
+		WASMModules: []runtime.WASMModule{
+			{
+				Name: "wasm",
+				Path: "module.wasm",
+				Data: wasm,
+			},
+		},
 		PageHandler: func(r *http.Request) any {
+			values := r.URL.Query()
+			err := values.Get("error")
+
 			return Context{
 				SubmitURL: submitURL,
 				LoginURL:  loginURL,
+				Error:     err,
 			}
 		},
 		PostHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -49,29 +63,12 @@ func main() {
 				return
 			}
 
-			missing := validation.GetMissingFields(r.Form, []string{"username", "password", "confirm-password"})
-			if len(missing) > 0 {
-				zap.S().Warnf("missing fields: %+v", missing)
-				err := make([]string, 0, len(missing))
-				for _, field := range missing {
-					err = append(err, "missing="+field)
-				}
-				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?"+strings.Join(err, "&"), http.StatusFound)
-				return
-			}
-
 			password := r.Form.Get("password")
 			confirm := r.Form.Get("confirm-password")
 
 			if password != confirm {
 				zap.S().Warn("mistmatched passwords")
 				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=password", http.StatusFound)
-				return
-			}
-
-			if !validation.CheckPasswordComplexity(password) {
-				zap.S().Warn("password complexity")
-				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=complexity", http.StatusFound)
 				return
 			}
 

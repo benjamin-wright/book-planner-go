@@ -9,6 +9,7 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/cmd/apis/auth/register/pkg/client"
 	"ponglehub.co.uk/book-planner-go/src/internal/tokens"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/api"
+	"ponglehub.co.uk/book-planner-go/src/pkg/web/wasm/validation"
 )
 
 func main() {
@@ -24,6 +25,16 @@ func main() {
 			err := c.BindJSON(&body)
 			if err != nil {
 				c.AbortWithError(400, fmt.Errorf("failed to parse request body: %+v", err))
+				return
+			}
+
+			if body.Username == "" {
+				c.AbortWithError(400, fmt.Errorf("missing username in request: %+v", err))
+				return
+			}
+
+			if !validation.CheckPasswordComplexity(body.Password) {
+				c.AbortWithError(400, fmt.Errorf("password failed complexity checks: %+v", err))
 				return
 			}
 

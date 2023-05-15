@@ -6,7 +6,7 @@
     --disabled-color: #c9c9c9;
 }
 
-h1 {
+.title {
     margin: 0 -0.35em 0 0;
     padding: 1em 0;
     font-weight: lighter;
@@ -31,7 +31,7 @@ header {
     flex-direction: row;
 }
 
-header a {
+a {
     text-transform: capitalize;
     text-decoration: none;
     color: var(--main-fg-color);
@@ -43,6 +43,23 @@ header a {
     bottom: 0;
     left: 0;
     right: 0;
+}
+
+.top-right {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+}
+
+.bottom-right {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+}
+
+.padded {
+    padding: 1em;
 }
 
 .centered {
@@ -66,6 +83,7 @@ header a {
     grid-template-columns: fit-content(10%) auto;
     column-gap: 0.4em;
     row-gap: 1em;
+    white-space: nowrap;
 }
 
 input {
@@ -83,9 +101,16 @@ input:not([type='submit']) {
     border-bottom: solid 1px var(--main-fg-color);
 }
 
+input:invalid {
+    border-color: var(--highlight-color);
+}
+
 .button {
     border: solid 1px var(--main-fg-color);
     min-width: 6em;
+    padding: 1em;
+    text-align: center;
+    cursor: pointer;
 }
 
 .button:hover, .button:active, .button:focus {
@@ -93,5 +118,31 @@ input:not([type='submit']) {
 }
 
 .button:disabled {
-    background-color: var(--disabled-color);
+    color: var(--disabled-color);
+    background-color: var(--main-bg-color);
+    border-color: var(--disabled-color);
+}
+
+.alert {
+    visibility: hidden;
+    color: var(--highlight-color);
+    margin: 0.5em;
+    box-shadow: var(--lowlight-color) 2px 2px 8px 3px;
+
+    animation: fade 6s linear;
+}
+
+@keyframes fade {
+    0%,100% {
+        opacity: 0;
+        visibility: hidden;
+    }
+    1% {
+        opacity: 0;
+        visibility: hidden;
+    }
+    3%,80% {
+        opacity: 1;
+        visibility: visible;
+    }
 }

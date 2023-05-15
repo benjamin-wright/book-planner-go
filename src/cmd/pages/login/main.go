@@ -4,19 +4,14 @@ import (
 	_ "embed"
 	"net/http"
 	"os"
-	"strings"
 
 	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/cmd/apis/auth/login/pkg/client"
-	"ponglehub.co.uk/book-planner-go/src/pkg/web/api/validation"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/runtime"
 )
 
 //go:embed index.html
 var content string
-
-//go:embed module.wasm
-var wasm []byte
 
 type Context struct {
 	RegisterURL string
@@ -37,13 +32,6 @@ func main() {
 		Template:    content,
 		Title:       "Book Planner: Login",
 		HideHeaders: true,
-		WASMModules: []runtime.WASMModule{
-			{
-				Name: "wasm",
-				Path: "module.wasm",
-				Data: wasm,
-			},
-		},
 		PageHandler: func(r *http.Request) any {
 			query := r.URL.Query()
 			registered := query.Has("registered")
@@ -61,17 +49,6 @@ func main() {
 			if err != nil {
 				zap.S().Errorf("error parsing form: %+v", err)
 				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=unknown", http.StatusFound)
-				return
-			}
-
-			missing := validation.GetMissingFields(r.Form, []string{"username", "password"})
-			if len(missing) > 0 {
-				zap.S().Warnf("missing fields: %+v", missing)
-				err := make([]string, 0, len(missing))
-				for _, field := range missing {
-					err = append(err, "missing="+field)
-				}
-				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?"+strings.Join(err, "&"), http.StatusFound)
 				return
 			}
 

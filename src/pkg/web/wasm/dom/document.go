@@ -1,4 +1,4 @@
-package wasm
+package dom
 
 import (
 	"errors"
@@ -54,4 +54,13 @@ func (d *Document) SetDisabled(id string, value bool) {
 	}
 
 	element.Set("disabled", value)
+}
+
+func (d *Document) SetCustomValidity(id string, value string) {
+	element := d.doc.Call("getElementById", id)
+	if element.IsUndefined() {
+		panic("failed to find element" + id)
+	}
+
+	element.Call("setCustomValidity", value)
 }

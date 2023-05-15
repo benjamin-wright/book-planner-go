@@ -1,13 +1,29 @@
-<section>
-    <p>Welcome to the Book Planner! Sign up for a new account and start writing!</p>
-    <p>Already got an account? <a href="{{ .LoginURL }}">Log in instead.</a></p>
-    <form action="{{ .SubmitURL }}" method="post">
-        <label for="username">Username:</label>
-        <input id="username" name="username" type="text" />
-        <label for="password">Password:</label>
-        <input id="password" name="password" type="password" />
-        <label for="confirm-password">Confirm Password:</label>
-        <input id="confirm-password" name="confirm-password" type="password" />
-        <input type="submit" value="OK" />
+<main class="fill centered vertical">
+    <h1 class="title">Book Planner</h1>
+    <p>Sign up for a new account and start writing</p>
+    <form class="horizontal" action="{{ .SubmitURL }}" method="post">
+        <input id="submit" class="button" type="submit" value="Register" tabindex="0" />
+        <section class="form-grid">
+            <label for="username">Username:</label>
+            <input id="username" name="username" type="text" autocomplete="username" required />
+            <label for="password">Password:</label>
+            <input id="password" name="password" type="password" autocomplete="new-password" oninput="wasm.exports.validate()" required />
+            <label for="confirm-password">Confirm:</label>
+            <input id="confirm-password" name="confirm-password" type="password" autocomplete="new-password" oninput="wasm.exports.validate()" required />
+        </section>
     </form>
-</section>
+</main>
+<aside class="top-right padded">
+    <a class="button" href="{{ .LoginURL }}">Login</a>
+</aside>
+{{- if .Error }}
+<aside class="bottom-right padded alert">
+    {{- if eq .Error "exists" }}
+    <p>That users already exists, please try another username</p>
+    {{- else if eq .Error "password" }}
+    <p>Looks like your passwords didn't match, try that again</p>
+    {{- else }}
+    <p>Something unexpected happened, please try again later</p>
+    {{- end }}
+</aside>
+{{- end }}

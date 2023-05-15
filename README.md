@@ -14,8 +14,8 @@ Prime directive is minimal resource footprint in terms of development overhead a
 
 While tinygo are sorting out their GC issues:
 
-```shell
-cp $(tinygo env TINYGOROOT)/targets/wasm_exec.js templates/wasm_exec.js
+```go
+//go:generate sh -c "cp ${DOLLAR}(tinygo env TINYGOROOT)/targets/wasm_exec.js templates/wasm_exec.js"
 ```
 
 then swap in:

@@ -7,6 +7,8 @@ import (
 
 	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/cmd/apis/auth/login/pkg/client"
+	"ponglehub.co.uk/book-planner-go/src/pkg/web/components/alert"
+	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/component"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/runtime"
 )
 
@@ -17,6 +19,7 @@ type Context struct {
 	RegisterURL string
 	Registered  bool
 	SubmitURL   string
+	Error       string
 }
 
 func main() {
@@ -32,6 +35,9 @@ func main() {
 		Template:    content,
 		Title:       "Book Planner: Login",
 		HideHeaders: true,
+		Children: []component.Component{
+			alert.Get(),
+		},
 		PageHandler: func(r *http.Request) any {
 			query := r.URL.Query()
 			registered := query.Has("registered")
@@ -40,6 +46,12 @@ func main() {
 				RegisterURL: registerURL,
 				Registered:  registered,
 				SubmitURL:   submitURL,
+				Error: alert.Lookup(
+					query.Get("error"),
+					map[string]string{
+						"unauthorized": "Login failed, did you use the right username and password?",
+					},
+				),
 			}
 		},
 		PostHandler: func(w http.ResponseWriter, r *http.Request) {

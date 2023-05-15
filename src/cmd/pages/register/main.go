@@ -8,6 +8,8 @@ import (
 
 	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/cmd/apis/auth/register/pkg/client"
+	"ponglehub.co.uk/book-planner-go/src/pkg/web/components/alert"
+	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/component"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/runtime"
 )
 
@@ -43,14 +45,22 @@ func main() {
 				Data: wasm,
 			},
 		},
+		Children: []component.Component{
+			alert.Get(),
+		},
 		PageHandler: func(r *http.Request) any {
-			values := r.URL.Query()
-			err := values.Get("error")
+			query := r.URL.Query()
 
 			return Context{
 				SubmitURL: submitURL,
 				LoginURL:  loginURL,
-				Error:     err,
+				Error: alert.Lookup(
+					query.Get("error"),
+					map[string]string{
+						"exists":   "That users already exists, please try another username",
+						"password": "Looks like your passwords didn't match, try that again",
+					},
+				),
 			}
 		},
 		PostHandler: func(w http.ResponseWriter, r *http.Request) {

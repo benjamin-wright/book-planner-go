@@ -1,0 +1,8 @@
+name: apis-tokens
+labels: [ auth-backend ]
+
+# hostname:
+# image:
+
+secureEnv:
+  TOKEN_KEYFILE: "abcdefg"

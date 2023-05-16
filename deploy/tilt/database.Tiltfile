@@ -1,3 +1,5 @@
+load('ext://helm_resource', 'helm_resource')
+
 def redis(name, storage):
     db(name, 'redis', storage)
 
@@ -22,3 +24,44 @@ def db(name, db_type, storage):
         extra_pod_selectors=[{'app': name}],
         labels=['infra'],
     )
+
+def load_migrations(path):
+    file = path.split('/')[-1].replace('.sql', '')
+    [ database, index ] = file.split('-')
+    migration = str(local(
+        'cat %s' % path,
+        echo_off=True,
+        quiet=True,
+    )).rstrip('\n').split('\n')
+
+    return [
+        '--set=migrations.%s.database=%s' % (file, database),
+        '--set=migrations.%s.index=%s' % (file, index),
+        '--set-file=migrations.%s.migration=%s' % (file, path),
+    ]
+
+def migrations(path, db):
+    dirs = str(local(
+        'find %s -name migrations' % path,
+        echo_off=True,
+        quiet=True,
+    )).rstrip('\n').split('\n')
+
+    for d in dirs:
+        files = str(local(
+            'find %s -name *.sql' % d,
+            echo_off=True,
+            quiet=True,
+        )).rstrip('\n').split('\n')
+
+        flags = [ flag for file in files for flag in load_migrations(file) ]
+        parent_dir = d.split('/')[-2]
+
+        helm_resource(
+            'mig-%s' % parent_dir,
+            'deploy/helm/migrations',
+            namespace='book-planner',
+            flags=[
+                '--set=deployment=%s' % db,
+            ] + flags,
+        )

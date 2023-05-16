@@ -1,5 +1,25 @@
-<section>
-    <h1>Welcome!</h1>
-    <p>This is the <em>book planner</em> app, where you can plan out your <em>plot</em> and <em>character</em> relationships.</p>
-    <p>Looks like you've not got any projects yet, please create a new project to begin!</p>
+<h1 class="title centered">Books</h1>
+<section class="horizontal">
+    {{- range .Books }}
+    <article>
+        <p>{{ .Title }}</p>
+        <p>{{ .Summary }}</p>
+        <dl>
+            <dt>characters</dt>
+            <dd>{{ .Stats.Characters }}</dd>
+            <dt>locations</dt>
+            <dd>{{ .Stats.Locations }}</dd>
+            <dt>scenes</dt>
+            <dd>{{ .Stats.Scenes }}</dd>
+            <dt>chapters</dt>
+            <dd>{{ .Stats.Chapters }}</dd>
+        </dl>
+        <a class="panel-button" href="{{ $.BookURL }}/{{ .ID }}">&#8595;</a>            
+    </article>
+    {{- end }}
+    <article class="panel-button">
+        <form class="fill-parent">
+            <input value="+" type="submit" />            
+        </form>
+    </article>
 </section>

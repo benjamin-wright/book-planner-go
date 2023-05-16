@@ -1,12 +1,10 @@
-name: apis-verify
+name: apis-auth
 labels: [ auth-backend ]
 # hostname:
 # image:
 
 env:
   LOGIN_URL: "http://{{ .Values.hostname }}/login"
-
-secureEnv:
-  TOKEN_KEYFILE: "abcdefg"
+  TOKENS_API_URL: "http://apis-tokens.{{ .Release.Namespace }}.svc.cluster.local"
 
 isValidationServer: true

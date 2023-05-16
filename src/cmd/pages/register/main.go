@@ -1,13 +1,13 @@
 package main
 
 import (
+	"context"
 	_ "embed"
-	"errors"
 	"net/http"
 	"os"
 
 	"go.uber.org/zap"
-	"ponglehub.co.uk/book-planner-go/src/cmd/apis/auth/register/pkg/client"
+	usersApi "ponglehub.co.uk/book-planner-go/src/cmd/apis/users/pkg/client"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/components/alert"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/component"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/runtime"
@@ -32,7 +32,7 @@ func main() {
 	submitURL := os.Getenv("SUBMIT_URL")
 	redirectURL := os.Getenv("REDIRECT_URL")
 
-	cli := client.New(os.Getenv("REGISTER_API_URL"))
+	users := usersApi.New(os.Getenv("USERS_API_URL"))
 
 	runtime.Run(runtime.ServerOptions{
 		Template:    content,
@@ -85,20 +85,13 @@ func main() {
 			username := r.Form.Get("username")
 
 			zap.S().Infof("Adding new user %s", username)
-
-			err = cli.Register(r.Context(), client.PostBody{
-				Username: username,
-				Password: password,
-			})
-			if err != nil {
-				zap.S().Errorf("error sending registration request: %+v", err)
-
-				if errors.Is(err, client.UserExistsError) {
-					http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=exists", http.StatusFound)
-				} else {
-					http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=unknown", http.StatusFound)
-				}
-
+			err = users.AddUser(context.TODO(), username, password)
+			if err == usersApi.ErrUserExists {
+				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=exists", http.StatusFound)
+				return
+			} else if err != nil {
+				zap.S().Errorf("error creating user: %+v", err)
+				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=unknown", http.StatusFound)
 				return
 			}
 

@@ -29,6 +29,12 @@ header {
     align-items: center;
     justify-content: space-between;
     flex-direction: row;
+    padding: 0.2em 0.4em 0.2em 0.2em;
+}
+
+header h1 {
+    font-weight: lighter;
+    margin: 0;
 }
 
 a {

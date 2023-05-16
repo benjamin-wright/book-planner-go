@@ -11,4 +11,4 @@ env:
   SUBMIT_URL: "{{ .hostname }}/register"
   LOGIN_URL: "{{ .hostname }}/login"
   REDIRECT_URL: "{{ .hostname }}/login?registered=true"
-  REGISTER_API_URL: "http://apis-register.{{ .Release.Namespace }}.svc.cluster.local"
+  USERS_API_URL: "http://apis-users.{{ .Release.Namespace }}.svc.cluster.local"

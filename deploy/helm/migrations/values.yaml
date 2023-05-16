@@ -1,0 +1,6 @@
+# deployment:
+# migrations:
+#   books-1:
+#     database: books
+#     index: 1
+#     migration: blah blah

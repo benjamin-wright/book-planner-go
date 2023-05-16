@@ -1,0 +1,11 @@
+name: apis-users
+labels: [ auth-backend ]
+
+# hostname:
+# image:
+
+cockroach:
+  deployment: "cockroach"
+  database: "users"
+  username: "users"
+  secret: "users-cockroach"

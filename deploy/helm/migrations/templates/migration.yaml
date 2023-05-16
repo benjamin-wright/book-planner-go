@@ -1,0 +1,12 @@
+{{ range $name, $migration := .Values.migrations }}
+apiVersion: ponglehub.co.uk/v1alpha1
+kind: CockroachMigration
+metadata:
+  name: {{ $name }}
+spec:
+  deployment: {{ $.Values.deployment }}
+  database: {{ $migration.database }}
+  index: {{ $migration.index }}
+  migration: |-
+    {{ $migration.migration | nindent 4 }}
+{{- end }}

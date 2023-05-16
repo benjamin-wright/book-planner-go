@@ -6,7 +6,8 @@ import (
 	"os"
 
 	"go.uber.org/zap"
-	"ponglehub.co.uk/book-planner-go/src/cmd/apis/auth/login/pkg/client"
+	tokensApi "ponglehub.co.uk/book-planner-go/src/cmd/apis/tokens/pkg/client"
+	usersApi "ponglehub.co.uk/book-planner-go/src/cmd/apis/users/pkg/client"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/components/alert"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/component"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/framework/runtime"
@@ -29,7 +30,8 @@ func main() {
 	submitURL := os.Getenv("SUBMIT_URL")
 	redirectURL := os.Getenv("REDIRECT_URL")
 
-	cli := client.New(os.Getenv("LOGIN_API_URL"))
+	users := usersApi.New(os.Getenv("USERS_API_URL"))
+	tokens := tokensApi.New(os.Getenv("TOKENS_API_URL"))
 
 	runtime.Run(runtime.ServerOptions{
 		Template:    content,
@@ -69,21 +71,31 @@ func main() {
 
 			zap.S().Infof("Logging in user %s", username)
 
-			response, err := cli.Login(r.Context(), client.PostBody{
-				Username: username,
-				Password: password,
-			})
+			user, valid, err := users.CheckPassword(r.Context(), username, password)
 			if err != nil {
-				zap.S().Errorf("error sending login request: %+v", err)
+				zap.S().Errorf("error checking password: %+v", err)
+				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=unknown", http.StatusFound)
+				return
+			}
+
+			if !valid {
+				zap.S().Warnf("password didn't match: %+v", err)
 				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=unauthorized", http.StatusFound)
+				return
+			}
+
+			res, err := tokens.GetLoginToken(user.ID)
+			if err != nil {
+				zap.S().Errorf("error fetching login token: %+v", err)
+				http.Redirect(w, r, "http://"+hostname+proxyPrefix+"?error=unknown", http.StatusFound)
 				return
 			}
 
 			http.SetCookie(w, &http.Cookie{
 				Name:     "ponglehub.login",
-				Value:    response.Token,
+				Value:    res.Token,
 				Domain:   hostname,
-				MaxAge:   response.MaxAge,
+				MaxAge:   res.MaxAge,
 				HttpOnly: true,
 			})
 

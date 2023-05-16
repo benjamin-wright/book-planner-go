@@ -15,11 +15,15 @@ spec:
       containers:
       - name: app
         image: "{{ .Values.image }}"
-        {{- if or .Values.secureEnv .Values.redis }}
+        {{- if or .Values.secureEnv .Values.redis .Values.cockroach }}
         envFrom:
         {{- if .Values.redis }}
         - secretRef:
             name: "{{ .Values.redis.secret }}"
+        {{- end }}
+        {{- if .Values.cockroach }}
+        - secretRef:
+            name: "{{ .Values.cockroach.secret }}"
         {{- end }}
         {{- if .Values.secureEnv }}
         - secretRef:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"go.uber.org/zap"
 )
@@ -141,13 +142,55 @@ func (d *AdminConn) GrantPermissions(username string, database string) error {
 		return fmt.Errorf("failed to grant permissions: %+v", err)
 	}
 
+	query = fmt.Sprintf("GRANT ALL ON %s.* TO %s", sanitize(database), sanitize(username))
+	if _, err := d.conn.Exec(context.Background(), query); err != nil {
+		if pgerr, ok := err.(*pgconn.PgError); ok {
+			zap.S().Infof("Code: %s", pgerr.Code)
+			zap.S().Infof("Detail: %s", pgerr.Detail)
+			zap.S().Infof("Message: %s", pgerr.Message)
+			zap.S().Infof("Hint: %s", pgerr.Hint)
+
+			if pgerr.Message != "no object matched" {
+				return fmt.Errorf("failed to grant existing table permissions: %+v", err)
+			}
+		} else {
+			return fmt.Errorf("failed to grant existing table permissions: %+v", err)
+		}
+	}
+
+	query = fmt.Sprintf("USE %s; ALTER DEFAULT PRIVILEGES FOR ALL ROLES GRANT ALL ON TABLES TO %s;", sanitize(database), sanitize(username))
+	if _, err := d.conn.Exec(context.Background(), query); err != nil {
+		if pgerr, ok := err.(*pgconn.PgError); ok {
+			zap.S().Infof("Code: %s", pgerr.Code)
+			zap.S().Infof("Detail: %s", pgerr.Detail)
+			zap.S().Infof("Message: %s", pgerr.Message)
+			zap.S().Infof("Hint: %s", pgerr.Hint)
+
+			if pgerr.Message != "no object matched" {
+				return fmt.Errorf("failed to grant default table permissions: %+v", err)
+			}
+		} else {
+			return fmt.Errorf("failed to grant default table permissions: %+v", err)
+		}
+	}
+
 	zap.S().Infof("Granted '%s' permission to read/write to '%s'", username, database)
 
 	return nil
 }
 
 func (d *AdminConn) RevokePermissions(username string, database string) error {
-	query := fmt.Sprintf("REVOKE ALL ON DATABASE %s FROM %s", sanitize(database), sanitize(username))
+	query := fmt.Sprintf("ALTER DEFAULT PRIVILEGES FOR ALL ROLES REVOKE ALL ON DATABASE %s FROM %s;", sanitize(database), sanitize(username))
+	if _, err := d.conn.Exec(context.Background(), query); err != nil {
+		return fmt.Errorf("failed to revoke default permissions: %+v", err)
+	}
+
+	query = fmt.Sprintf("REVOKE ALL ON * FROM %s", sanitize(username))
+	if _, err := d.conn.Exec(context.Background(), query); err != nil {
+		return fmt.Errorf("failed to revoke existing table permissions: %+v", err)
+	}
+
+	query = fmt.Sprintf("REVOKE ALL ON DATABASE %s FROM %s", sanitize(database), sanitize(username))
 	if _, err := d.conn.Exec(context.Background(), query); err != nil {
 		return fmt.Errorf("failed to revoke permissions: %+v", err)
 	}

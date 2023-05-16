@@ -156,7 +156,7 @@ func (s *CockroachStatefulSet) FromUnstructured(obj *unstructured.Unstructured) 
 		readyReplicas = 0
 	}
 
-	s.Ready = replicas == readyReplicas
+	s.Ready = replicas == readyReplicas && replicas > 0
 
 	return nil
 }

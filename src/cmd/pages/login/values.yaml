@@ -9,4 +9,5 @@ env:
   REGISTER_URL: "http://{{ .Values.hostname }}/register"
   SUBMIT_URL: "http://{{ .Values.hostname}}/login"
   REDIRECT_URL: "http://{{ .Values.hostname}}/home"
-  LOGIN_API_URL: "http://apis-login.{{ .Release.Namespace }}.svc.cluster.local"
+  USERS_API_URL: "http://apis-users.{{ .Release.Namespace }}.svc.cluster.local"
+  TOKENS_API_URL: "http://apis-tokens.{{ .Release.Namespace }}.svc.cluster.local"

@@ -15,3 +15,9 @@ secure: true
 #   deployment:
 #   unit:
 #   secret:
+
+# cockroach:
+#   deployment:
+#   database:
+#   username:
+#   secret:

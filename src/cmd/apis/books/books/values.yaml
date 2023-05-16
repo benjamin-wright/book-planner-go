@@ -1,0 +1,11 @@
+name: apis-books
+labels: [ backend ]
+
+# hostname:
+# image:
+
+cockroach:
+  deployment: "cockroach"
+  database: "books"
+  username: "books"
+  secret: "books-cockroach"

@@ -13,6 +13,7 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/wasm/validation"
 )
 
+var ErrNoUser = errors.New("user not found")
 var ErrUserExists = errors.New("user already exists")
 
 type Client struct {
@@ -59,9 +60,9 @@ func (c *Client) AddUser(name string, password string) error {
 var ErrPasswordMismatch = errors.New("password mismatch")
 
 func (c *Client) CheckPassword(name string, password string) (*types.User, error) {
-	rows, err := c.conn.Query(context.Background(), `SELECT "id", "password" FROM users WHERE "name" == $1`, name)
+	rows, err := c.conn.Query(context.Background(), `SELECT "id", "password" FROM users WHERE "name" = $1`, name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add user to database: %+v", err)
+		return nil, fmt.Errorf("failed to get user from database: %+v", err)
 	}
 	defer rows.Close()
 
@@ -78,7 +79,11 @@ func (c *Client) CheckPassword(name string, password string) (*types.User, error
 		}
 	}
 
-	if numUsers != 1 {
+	if numUsers == 0 {
+		return nil, ErrNoUser
+	}
+
+	if numUsers > 1 {
 		return nil, fmt.Errorf("expected 1 user, got %d", numUsers)
 	}
 

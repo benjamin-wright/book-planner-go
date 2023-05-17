@@ -9,6 +9,22 @@ import (
 	"go.uber.org/zap"
 )
 
+func parsePGXError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if pgerr, ok := err.(*pgconn.PgError); ok {
+		if pgerr.Message == "no object matched" {
+			return nil
+		}
+
+		return fmt.Errorf("%s [%s]: %s", pgerr.Message, pgerr.Code, pgerr.Detail)
+	}
+
+	return err
+}
+
 type AdminConn struct {
 	conn *pgx.Conn
 }
@@ -142,36 +158,16 @@ func (d *AdminConn) GrantPermissions(username string, database string) error {
 		return fmt.Errorf("failed to grant permissions: %+v", err)
 	}
 
-	query = fmt.Sprintf("GRANT ALL ON %s.* TO %s", sanitize(database), sanitize(username))
-	if _, err := d.conn.Exec(context.Background(), query); err != nil {
-		if pgerr, ok := err.(*pgconn.PgError); ok {
-			zap.S().Infof("Code: %s", pgerr.Code)
-			zap.S().Infof("Detail: %s", pgerr.Detail)
-			zap.S().Infof("Message: %s", pgerr.Message)
-			zap.S().Infof("Hint: %s", pgerr.Hint)
-
-			if pgerr.Message != "no object matched" {
-				return fmt.Errorf("failed to grant existing table permissions: %+v", err)
-			}
-		} else {
-			return fmt.Errorf("failed to grant existing table permissions: %+v", err)
-		}
+	query = fmt.Sprintf("USE %s; ALTER DEFAULT PRIVILEGES FOR ALL ROLES GRANT ALL ON TABLES TO %s;", sanitize(database), sanitize(username))
+	_, err := d.conn.Exec(context.Background(), query)
+	if pgerr := parsePGXError(err); pgerr != nil {
+		return fmt.Errorf("failed to grant default table permissions: %+v", pgerr)
 	}
 
-	query = fmt.Sprintf("USE %s; ALTER DEFAULT PRIVILEGES FOR ALL ROLES GRANT ALL ON TABLES TO %s;", sanitize(database), sanitize(username))
-	if _, err := d.conn.Exec(context.Background(), query); err != nil {
-		if pgerr, ok := err.(*pgconn.PgError); ok {
-			zap.S().Infof("Code: %s", pgerr.Code)
-			zap.S().Infof("Detail: %s", pgerr.Detail)
-			zap.S().Infof("Message: %s", pgerr.Message)
-			zap.S().Infof("Hint: %s", pgerr.Hint)
-
-			if pgerr.Message != "no object matched" {
-				return fmt.Errorf("failed to grant default table permissions: %+v", err)
-			}
-		} else {
-			return fmt.Errorf("failed to grant default table permissions: %+v", err)
-		}
+	query = fmt.Sprintf("GRANT ALL ON %s.* TO %s", sanitize(database), sanitize(username))
+	_, err = d.conn.Exec(context.Background(), query)
+	if pgerr := parsePGXError(err); pgerr != nil {
+		return fmt.Errorf("failed to grant existing table permissions: %+v", err)
 	}
 
 	zap.S().Infof("Granted '%s' permission to read/write to '%s'", username, database)

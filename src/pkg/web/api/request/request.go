@@ -21,7 +21,7 @@ func Post(ctx context.Context, url string, body any, response any) (int, error) 
 }
 
 func request(ctx context.Context, method string, url string, body any, response any) (int, error) {
-	var postData *bytes.Buffer
+	postData := &bytes.Buffer{}
 
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -50,7 +50,7 @@ func request(ctx context.Context, method string, url string, body any, response 
 		decoder := json.NewDecoder(res.Body)
 		err = decoder.Decode(&response)
 		if err != nil {
-			return 0, fmt.Errorf("failed to decode response: %+v", err)
+			return res.StatusCode, fmt.Errorf("failed to decode response: %+v", err)
 		}
 	}
 

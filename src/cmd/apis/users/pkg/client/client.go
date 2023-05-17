@@ -85,16 +85,17 @@ func (c *Client) CheckPassword(ctx context.Context, username string, password st
 		},
 		&response,
 	)
-	if err != nil {
-		return nil, false, err
-	}
 
 	if status == http.StatusUnauthorized {
 		return nil, false, nil
 	}
 
-	if status != http.StatusCreated {
+	if status > 299 {
 		return nil, false, fmt.Errorf("failed with status %d", status)
+	}
+
+	if err != nil {
+		return nil, false, err
 	}
 
 	return &response, true, nil

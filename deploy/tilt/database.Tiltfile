@@ -26,7 +26,7 @@ def db(name, db_type, storage):
     )
 
 def load_migrations(path):
-    file = path.split('/')[-1].replace('.sql', '')
+    file = migration_name(path)
     [ database, index ] = file.split('-')
     migration = str(local(
         'cat %s' % path,
@@ -39,6 +39,9 @@ def load_migrations(path):
         '--set=migrations.%s.index=%s' % (file, index),
         '--set-file=migrations.%s.migration=%s' % (file, path),
     ]
+
+def migration_name(path):
+    return path.split('/')[-1].replace('.sql', '')
 
 def migrations(path, db):
     dirs = str(local(

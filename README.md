@@ -34,3 +34,7 @@ then swap in:
     }
 },
 ```
+
+## TODO
+
+- swap out pgx.conn for a connection pool (support restarts, etc.)

@@ -23,8 +23,8 @@ func PutPassword(c *database.Client) api.Handler {
 			}
 
 			user, err := c.CheckPassword(name, body.Password)
-			if err == database.ErrPasswordMismatch {
-				ctx.AbortWithError(http.StatusUnauthorized, err)
+			if err == database.ErrPasswordMismatch || err == database.ErrNoUser {
+				ctx.JSON(http.StatusUnauthorized, err)
 				return
 			} else if err != nil {
 				ctx.AbortWithError(http.StatusInternalServerError, err)

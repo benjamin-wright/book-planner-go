@@ -1,6 +1,8 @@
 package api
 
 import (
+	"io"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -16,7 +18,10 @@ type Handler struct {
 }
 
 func (h *Handler) TestHandler() *gin.Engine {
-	r := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
+	gin.DefaultWriter = io.Discard
+
+	r := gin.New()
 
 	if h.Path == "" {
 		h.Path = "/"

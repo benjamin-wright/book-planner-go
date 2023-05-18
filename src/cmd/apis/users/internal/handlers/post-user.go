@@ -15,7 +15,7 @@ func PostUser(c *database.Client) api.Handler {
 		Path:   "/",
 		Handler: func(ctx *gin.Context) {
 			var body client.AddUserRequest
-			err := ctx.Bind(&body)
+			err := ctx.BindJSON(&body)
 			if err != nil {
 				ctx.AbortWithError(http.StatusBadRequest, err)
 				return

@@ -36,6 +36,16 @@ func TestPostUserIntegration(t *testing.T) {
 			request: client.AddUserRequest{Username: "myuser", Password: "hi"},
 			status:  http.StatusBadRequest,
 		},
+		{
+			name:    "Simple password",
+			request: client.AddUserRequest{Username: "myuser", Password: "longbutsimple"},
+			status:  http.StatusBadRequest,
+		},
+		{
+			name:    "Success",
+			request: client.AddUserRequest{Username: "myuser", Password: "Password1?"},
+			status:  http.StatusCreated,
+		},
 	} {
 		t.Run(test.name, func(u *testing.T) {
 			if !assert.NoError(u, cli.DeleteAllUsers()) {
@@ -51,10 +61,11 @@ func TestPostUserIntegration(t *testing.T) {
 			r := handler.TestHandler()
 			w := httptest.NewRecorder()
 
-			body, err := json.Marshal(test.request)
+			body, err := json.Marshal(&test.request)
 			if !assert.NoError(t, err) {
 				return
 			}
+
 			req, _ := http.NewRequest("POST", "/", bytes.NewBuffer(body))
 			r.ServeHTTP(w, req)
 

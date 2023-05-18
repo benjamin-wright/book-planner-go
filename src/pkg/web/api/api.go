@@ -15,6 +15,18 @@ type Handler struct {
 	Handler func(c *gin.Context)
 }
 
+func (h *Handler) TestHandler() *gin.Engine {
+	r := gin.Default()
+
+	if h.Path == "" {
+		h.Path = "/"
+	}
+
+	r.Handle(h.Method, h.Path, h.Handler)
+
+	return r
+}
+
 func Init() {
 	logger, _ := zap.NewDevelopment()
 	zap.ReplaceGlobals(logger)

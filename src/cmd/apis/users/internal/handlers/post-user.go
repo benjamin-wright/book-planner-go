@@ -25,6 +25,9 @@ func PostUser(c *database.Client) api.Handler {
 			if err == database.ErrUserExists {
 				ctx.AbortWithError(http.StatusConflict, err)
 				return
+			} else if err == database.ErrComplexity {
+				ctx.AbortWithError(http.StatusBadRequest, err)
+				return
 			} else if err != nil {
 				ctx.AbortWithError(http.StatusInternalServerError, err)
 				return

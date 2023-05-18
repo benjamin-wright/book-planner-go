@@ -15,6 +15,7 @@ import (
 
 var ErrNoUser = errors.New("user not found")
 var ErrUserExists = errors.New("user already exists")
+var ErrComplexity = errors.New("password didn't meet complexity requirements")
 
 type Client struct {
 	conn *pgx.Conn
@@ -34,9 +35,18 @@ func New() (*Client, error) {
 	return &Client{conn: conn}, nil
 }
 
+func (c *Client) DeleteAllUsers() error {
+	_, err := c.conn.Exec(context.Background(), `DELETE FROM users`)
+	if err != nil {
+		return fmt.Errorf("failed to clear existing users; %+v", err)
+	}
+
+	return nil
+}
+
 func (c *Client) AddUser(name string, password string) error {
 	if !validation.CheckPasswordComplexity(password) {
-		return fmt.Errorf("password failed complexity checks")
+		return ErrComplexity
 	}
 
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -96,9 +106,9 @@ func (c *Client) CheckPassword(name string, password string) (*types.User, error
 }
 
 func (c *Client) GetUser(name string) (*types.User, error) {
-	rows, err := c.conn.Query(context.Background(), `SELECT "id" FROM users WHERE "name" == $1`, name)
+	rows, err := c.conn.Query(context.Background(), `SELECT "id" FROM users WHERE "name" = $1`, name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add user to database: %+v", err)
+		return nil, fmt.Errorf("failed to get user from database: %+v", err)
 	}
 	defer rows.Close()
 
@@ -114,9 +124,34 @@ func (c *Client) GetUser(name string) (*types.User, error) {
 		}
 	}
 
-	if numUsers != 1 {
+	if numUsers == 0 {
+		return nil, ErrNoUser
+	}
+
+	if numUsers > 1 {
 		return nil, fmt.Errorf("expected 1 user, got %d", numUsers)
 	}
 
 	return &user, nil
+}
+
+func (c *Client) ListUsers() ([]types.User, error) {
+	rows, err := c.conn.Query(context.Background(), `SELECT "id", "name", "password" FROM users`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user from database: %+v", err)
+	}
+	defer rows.Close()
+
+	users := []types.User{}
+
+	for rows.Next() {
+		user := types.User{}
+		if err = rows.Scan(&user.ID, &user.Name, &user.Password); err != nil {
+			return nil, fmt.Errorf("failed to parse new user ID: %+v", err)
+		}
+
+		users = append(users, user)
+	}
+
+	return users, nil
 }

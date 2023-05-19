@@ -16,7 +16,7 @@ func PutPassword(c *database.Client) api.Handler {
 		Handler: func(ctx *gin.Context) {
 			name := ctx.Param("name")
 			var body client.CheckPasswordRequest
-			err := ctx.Bind(&body)
+			err := ctx.BindJSON(&body)
 			if err != nil {
 				ctx.AbortWithError(http.StatusBadRequest, err)
 				return

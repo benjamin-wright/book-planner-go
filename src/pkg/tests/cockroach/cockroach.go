@@ -13,9 +13,6 @@ import (
 )
 
 func Run(name string, port int64) func() {
-	logger := zap.NewNop()
-	zap.ReplaceGlobals(logger)
-
 	os.Setenv("POSTGRES_HOST", "127.0.0.1")
 	os.Setenv("POSTGRES_PORT", strconv.FormatInt(port, 10))
 	os.Setenv("POSTGRES_USER", "root")

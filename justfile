@@ -65,7 +65,13 @@ build PATH_TO_CODE IMAGE_TAG:
     docker build -t "{{IMAGE_TAG}}" -f docker/golang.Dockerfile "{{PATH_TO_CODE}}/dist"
 
 test PATH_TO_CODE:
+    KUBECONFIG=$(pwd)/.scratch/kubeconfig NAMESPACE=book-planner go test -short "./{{PATH_TO_CODE}}/..."
+
+test-v PATH_TO_CODE:
     KUBECONFIG=$(pwd)/.scratch/kubeconfig NAMESPACE=book-planner go test -v -short "./{{PATH_TO_CODE}}/..."
 
 int-test PATH_TO_CODE:
+    KUBECONFIG=$(pwd)/.scratch/kubeconfig NAMESPACE=book-planner go test -run Integration "./{{PATH_TO_CODE}}/..."
+
+int-test-v PATH_TO_CODE:
     KUBECONFIG=$(pwd)/.scratch/kubeconfig NAMESPACE=book-planner go test -v -run Integration "./{{PATH_TO_CODE}}/..."

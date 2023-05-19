@@ -14,7 +14,7 @@ import (
 	"ponglehub.co.uk/book-planner-go/src/cmd/apis/users/pkg/client"
 )
 
-func TestPostUserIntegration(t *testing.T) {
+func TestPutPasswordIntegration(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
@@ -24,36 +24,38 @@ func TestPostUserIntegration(t *testing.T) {
 		return
 	}
 
-	handler := handlers.PostUser(cli)
+	handler := handlers.PutPassword(cli)
 
 	for _, test := range []struct {
 		name     string
-		request  client.AddUserRequest
+		url      string
+		request  client.CheckPasswordRequest
 		existing []types.User
 		status   int
 	}{
 		{
-			name:    "Short password",
-			request: client.AddUserRequest{Username: "myuser", Password: "hi"},
-			status:  http.StatusBadRequest,
+			name:    "Missing",
+			url:     "/my-user/password",
+			request: client.CheckPasswordRequest{Password: "Password3$"},
+			status:  http.StatusUnauthorized,
 		},
 		{
-			name:    "Simple password",
-			request: client.AddUserRequest{Username: "myuser", Password: "longbutsimple"},
-			status:  http.StatusBadRequest,
+			name:    "Bad password",
+			url:     "/my-user/password",
+			request: client.CheckPasswordRequest{Password: "Password1!"},
+			existing: []types.User{
+				{Name: "my-user", Password: "Password3$"},
+			},
+			status: http.StatusUnauthorized,
 		},
 		{
 			name:    "Success",
-			request: client.AddUserRequest{Username: "myuser", Password: "Password1?"},
-			status:  http.StatusCreated,
-		},
-		{
-			name: "Exists",
+			url:     "/my-user/password",
+			request: client.CheckPasswordRequest{Password: "Password3$"},
 			existing: []types.User{
-				{Name: "myuser", Password: "Password2!"},
+				{Name: "my-user", Password: "Password3$"},
 			},
-			request: client.AddUserRequest{Username: "myuser", Password: "Password1?"},
-			status:  http.StatusConflict,
+			status: http.StatusOK,
 		},
 	} {
 		t.Run(test.name, func(u *testing.T) {
@@ -70,12 +72,12 @@ func TestPostUserIntegration(t *testing.T) {
 			r := handler.TestHandler(testing.Verbose())
 			w := httptest.NewRecorder()
 
-			body, err := json.Marshal(&test.request)
+			body, err := json.Marshal(test.request)
 			if !assert.NoError(t, err) {
 				return
 			}
 
-			req, _ := http.NewRequest("POST", "/", bytes.NewBuffer(body))
+			req, _ := http.NewRequest("PUT", test.url, bytes.NewBuffer(body))
 			r.ServeHTTP(w, req)
 
 			assert.Equal(u, test.status, w.Code)

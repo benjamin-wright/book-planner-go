@@ -58,7 +58,7 @@ func (c *Client) AddUser(name string, password string) error {
 	_, err = c.conn.Exec(context.Background(), `INSERT INTO users("name", "password") VALUES ($1, $2)`, name, hash)
 
 	if err != nil {
-		if pgerr, ok := err.(*pgconn.PgError); ok && pgerr.ConstraintName == "unique_name" {
+		if pgerr, ok := err.(*pgconn.PgError); ok && pgerr.Code == "23505" && pgerr.ConstraintName == "users_name_key" {
 			return ErrUserExists
 		}
 		return fmt.Errorf("failed to add user to database: %+v", err)

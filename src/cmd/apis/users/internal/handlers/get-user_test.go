@@ -1,4 +1,4 @@
-package handlers
+package handlers_test
 
 import (
 	"encoding/json"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"ponglehub.co.uk/book-planner-go/src/cmd/apis/users/internal/database"
+	"ponglehub.co.uk/book-planner-go/src/cmd/apis/users/internal/handlers"
 	"ponglehub.co.uk/book-planner-go/src/cmd/apis/users/pkg/client"
 	"ponglehub.co.uk/book-planner-go/src/pkg/tests/validate"
 )
@@ -22,7 +23,7 @@ func TestGetUserIntegration(t *testing.T) {
 		return
 	}
 
-	handler := GetUser(cli)
+	handler := handlers.GetUser(cli)
 
 	type testUser struct {
 		name     string
@@ -85,7 +86,7 @@ func TestGetUserIntegration(t *testing.T) {
 				}
 			}
 
-			r := handler.TestHandler()
+			r := handler.TestHandler(testing.Verbose())
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", "/"+test.user, nil)
 			r.ServeHTTP(w, req)

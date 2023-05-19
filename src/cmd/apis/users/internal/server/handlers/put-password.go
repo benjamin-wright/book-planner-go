@@ -22,7 +22,7 @@ func PutPassword(c *database.Client) api.Handler {
 				return
 			}
 
-			user, err := c.CheckPassword(name, body.Password)
+			user, err := c.CheckPassword(database.User{Name: name, Password: body.Password})
 			if err == database.ErrPasswordMismatch || err == database.ErrNoUser {
 				ctx.JSON(http.StatusUnauthorized, err)
 				return
@@ -31,9 +31,9 @@ func PutPassword(c *database.Client) api.Handler {
 				return
 			}
 
-			ctx.JSON(http.StatusOK, map[string]string{
-				"username": user.Name,
-				"id":       user.ID,
+			ctx.JSON(http.StatusOK, client.CheckPasswordResponse{
+				Username: user.Name,
+				ID:       user.ID,
 			})
 		},
 	}

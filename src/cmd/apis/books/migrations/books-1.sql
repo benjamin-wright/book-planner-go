@@ -4,9 +4,11 @@ SAVEPOINT books_restart;
 
 CREATE TABLE books (
   "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "user_id" UUID,
+  "user_id" UUID NOT NULL,
+  "name" varchar(100) NOT NULL,
   "summary" varchar(500) NOT NULL,
-  "created_time" TIMESTAMP NOT NULL
+  "created_time" TIMESTAMP NOT NULL,
+  UNIQUE ("user_id", "name")
 );
 
 CREATE TABLE characters (
@@ -14,12 +16,11 @@ CREATE TABLE characters (
   "book_id" UUID NOT NULL,
   "firstname" varchar(50) NOT NULL,
   "familyname" varchar(50),
-  "created_time" TIMESTAMP NOT NULL,
-  "lastupdated_time" TIMESTAMP NOT NULL,
   CONSTRAINT fk_book
     FOREIGN KEY("book_id")
       REFERENCES books("id")
-      ON DELETE CASCADE
+      ON DELETE CASCADE,
+  UNIQUE ("book_id", "firstname", "familyname")
 );
 
 CREATE TABLE locations (
@@ -30,7 +31,8 @@ CREATE TABLE locations (
   CONSTRAINT fk_book
     FOREIGN KEY("book_id")
       REFERENCES books("id")
-      ON DELETE CASCADE
+      ON DELETE CASCADE,
+  UNIQUE ("book_id", "name")
 );
 
 CREATE TABLE chapters (

@@ -1,8 +1,6 @@
 package api
 
 import (
-	"io"
-
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -22,7 +20,7 @@ func Init() {
 	zap.ReplaceGlobals(logger)
 }
 
-func Run(options RunOptions) {
+func Router(options RunOptions) *gin.Engine {
 	r := gin.Default()
 
 	for _, handler := range options.Handlers {
@@ -33,22 +31,9 @@ func Run(options RunOptions) {
 		r.Handle(handler.Method, handler.Path, handler.Handler)
 	}
 
-	r.Run("0.0.0.0:80")
+	return r
 }
 
-func (h *Handler) TestHandler(verbose bool) *gin.Engine {
-	if !verbose {
-		gin.SetMode(gin.ReleaseMode)
-		gin.DefaultWriter = io.Discard
-	}
-
-	r := gin.New()
-
-	if h.Path == "" {
-		h.Path = "/"
-	}
-
-	r.Handle(h.Method, h.Path, h.Handler)
-
-	return r
+func Run(router *gin.Engine) {
+	router.Run("0.0.0.0:80")
 }

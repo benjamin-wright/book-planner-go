@@ -46,7 +46,7 @@ func request(ctx context.Context, method string, url string, body any, response 
 	}
 	defer res.Body.Close()
 
-	if response != nil {
+	if response != nil && res.StatusCode < 300 {
 		decoder := json.NewDecoder(res.Body)
 		err = decoder.Decode(&response)
 		if err != nil {

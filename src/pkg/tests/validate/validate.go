@@ -12,15 +12,18 @@ import (
 var UUID_REGEX = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 func Equal[T any](t *testing.T, expected T, actual T) bool {
-	typ := reflect.TypeOf(expected)
-
-	typ.Kind()
-	if !assert.Equal(t, typ.Kind(), reflect.Struct, "can't validate non-structs") {
+	ptrTyp := reflect.TypeOf(expected)
+	if !assert.Equal(t, ptrTyp.Kind(), reflect.Pointer, "expecting a pointer to a struct") {
 		return false
 	}
 
-	expectedVal := reflect.ValueOf(&expected).Elem()
-	actualVal := reflect.ValueOf(&actual).Elem()
+	typ := ptrTyp.Elem()
+	if !assert.Equal(t, typ.Kind(), reflect.Struct, "expecting a pointer to a struct") {
+		return false
+	}
+
+	expectedVal := reflect.ValueOf(expected).Elem()
+	actualVal := reflect.ValueOf(actual).Elem()
 
 	numFields := typ.NumField()
 	for i := 0; i < numFields; i++ {

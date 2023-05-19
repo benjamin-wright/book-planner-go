@@ -21,7 +21,7 @@ func PostUser(c *database.Client) api.Handler {
 				return
 			}
 
-			err = c.AddUser(body.Username, body.Password)
+			err = c.AddUser(database.User{Name: body.Username, Password: body.Password})
 			if err == database.ErrUserExists {
 				ctx.AbortWithError(http.StatusConflict, err)
 				return

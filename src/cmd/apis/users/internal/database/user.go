@@ -1,4 +1,4 @@
-package types
+package database
 
 type User struct {
 	Name     string

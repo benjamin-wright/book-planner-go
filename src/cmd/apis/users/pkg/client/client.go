@@ -59,7 +59,7 @@ func (c *Client) GetUser(ctx context.Context, username string) (*GetUserResponse
 		return nil, err
 	}
 
-	if status != http.StatusCreated {
+	if status != http.StatusOK {
 		return nil, fmt.Errorf("failed with status code %d", status)
 	}
 
@@ -71,7 +71,7 @@ type CheckPasswordRequest struct {
 }
 
 type CheckPasswordResponse struct {
-	ID       string `json:"id"`
+	ID       string `json:"id" validate:"uuid"`
 	Username string `json:"username"`
 }
 

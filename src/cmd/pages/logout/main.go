@@ -15,7 +15,7 @@ func main() {
 	loginURL := os.Getenv("LOGIN_URL")
 	proxyPrefix := os.Getenv("PROXY_PREFIX")
 
-	api.Run(api.RunOptions{
+	router := api.Router(api.RunOptions{
 		Handlers: []api.Handler{
 			{
 				Path:   proxyPrefix,
@@ -27,4 +27,6 @@ func main() {
 			},
 		},
 	})
+
+	api.Run(router)
 }

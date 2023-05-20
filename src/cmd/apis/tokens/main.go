@@ -11,10 +11,10 @@ import (
 func main() {
 	keyfile := tokens.Keyfile(os.Getenv("TOKEN_KEYFILE"))
 
-	api.Run(api.RunOptions{
+	api.Run(api.Router(api.RunOptions{
 		Handlers: []api.Handler{
 			handlers.GetLoginToken(keyfile),
 			handlers.ValidateLoginToken(keyfile),
 		},
-	})
+	}))
 }

@@ -12,9 +12,9 @@ func main() {
 	loginURL := os.Getenv("LOGIN_URL")
 	tokens := tokensApi.New(os.Getenv("TOKENS_API_URL"))
 
-	api.Run(api.RunOptions{
+	api.Run(api.Router(api.RunOptions{
 		Handlers: []api.Handler{
 			handlers.Verify(tokens, loginURL),
 		},
-	})
+	}))
 }

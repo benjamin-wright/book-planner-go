@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"ponglehub.co.uk/book-planner-go/src/cmd/apis/books/internal/database"
 	"ponglehub.co.uk/book-planner-go/src/cmd/apis/books/pkg/client"
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/api"
@@ -12,9 +13,10 @@ import (
 func GetBooks(c *database.Client) api.Handler {
 	return api.Handler{
 		Method: "GET",
-		Path:   "/books",
+		Path:   "/user/:user/books",
 		Handler: func(ctx *gin.Context) {
-			user := ctx.Request.Header.Get("X-Auth-User")
+			user := ctx.Param("user")
+			zap.S().Infof("Getting books for user %s", user)
 
 			books, err := c.GetBooks(user)
 			if err != nil {
@@ -23,7 +25,7 @@ func GetBooks(c *database.Client) api.Handler {
 			}
 
 			response := client.GetBooksResponse{
-				Books: make([]client.Book, len(books)),
+				Books: make([]client.Book, 0, len(books)),
 			}
 
 			for _, book := range books {
@@ -35,7 +37,7 @@ func GetBooks(c *database.Client) api.Handler {
 				})
 			}
 
-			ctx.JSON(http.StatusOK, response)
+			ctx.JSON(http.StatusOK, &response)
 		},
 	}
 }

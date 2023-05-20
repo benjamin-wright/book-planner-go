@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"ponglehub.co.uk/book-planner-go/src/pkg/web/api/request"
@@ -23,7 +24,7 @@ type Book struct {
 	ID          string    `json:"id" validate:"uuid"`
 	Name        string    `json:"name"`
 	Summary     string    `json:"summary"`
-	CreatedTime time.Time `json:"createdTime"`
+	CreatedTime time.Time `json:"createdTime" validate:"ignore"`
 }
 
 type GetBooksResponse struct {
@@ -31,8 +32,8 @@ type GetBooksResponse struct {
 }
 
 func (c *Client) GetBooks(user string) (*GetBooksResponse, error) {
-	var response GetBooksResponse
-	status, err := request.Get(context.TODO(), c.url+"/books", &response)
+	response := GetBooksResponse{}
+	status, err := request.Get(context.TODO(), c.url+"/user/"+url.PathEscape(user)+"/books", &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %+v", err)
 	}

@@ -41,9 +41,9 @@ func (c *Client) DeleteAllBooks() error {
 }
 
 func (c *Client) AddBook(book Book) error {
-	_, err := c.conn.Exec(
+	tag, err := c.conn.Exec(
 		context.TODO(),
-		`INSERT INTO books ("user_id", "name", "summary", "created_time") VALUES ($1, $2, $3, $4)`,
+		`INSERT INTO books("user_id", "name", "summary", "created_time") VALUES ($1, $2, $3, $4)`,
 		book.UserID, book.Name, book.Summary, time.Now(),
 	)
 	if err != nil {
@@ -53,11 +53,15 @@ func (c *Client) AddBook(book Book) error {
 		return fmt.Errorf("error creating book: %+v", err)
 	}
 
+	if tag.RowsAffected() != 1 {
+		return fmt.Errorf("expected 1 row affected, got %d", tag.RowsAffected())
+	}
+
 	return nil
 }
 
 func (c *Client) GetBooks(user string) ([]Book, error) {
-	rows, err := c.conn.Query(context.TODO(), `SELECT "id", "user_id", "name", "summary", "created_time" FROM books WHERE user_id = $1`, user)
+	rows, err := c.conn.Query(context.TODO(), `SELECT "id", "user_id", "name", "summary", "created_time" FROM books WHERE "user_id" = $1`, user)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching books: %+v", err)
 	}
@@ -71,6 +75,12 @@ func (c *Client) GetBooks(user string) ([]Book, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse row: %+v", err)
 		}
+
+		books = append(books, book)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error fetching books: %+v", err)
 	}
 
 	return books, nil

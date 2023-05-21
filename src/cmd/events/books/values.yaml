@@ -1,0 +1,14 @@
+name: events-books
+labels: [ backend ]
+
+# image:
+# natsUrl: 
+
+env:
+  BOOKS_EVENT_SUBJECT: "books.create"
+
+cockroach:
+  deployment: "cockroach"
+  database: "books"
+  username: "books"
+  secret: "books-event-cockroach"

@@ -1,0 +1,11 @@
+{{- if .Values.cockroach }}
+apiVersion: ponglehub.co.uk/v1alpha1
+kind: CockroachClient
+metadata:
+  name: {{ .Values.name }}
+spec:
+  deployment: {{ .Values.cockroach.deployment }}
+  database: {{ .Values.cockroach.database }}
+  username: {{ .Values.cockroach.username }}
+  secret: {{ .Values.cockroach.secret }}
+{{- end }}

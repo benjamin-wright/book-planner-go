@@ -1,0 +1,19 @@
+# name:
+# natsUrl:
+# image:
+
+replicas: 1
+env: {}
+
+secureEnv: {}
+
+# redis:
+#   deployment:
+#   unit:
+#   secret:
+
+# cockroach:
+#   deployment:
+#   database:
+#   username:
+#   secret:

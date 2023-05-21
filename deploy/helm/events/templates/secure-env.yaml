@@ -1,0 +1,10 @@
+{{- if .Values.secureEnv }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.name }}-secure-env
+data:
+  {{- range $key, $value := .Values.secureEnv }}
+  {{ $key }}: {{ $value | b64enc }}
+  {{- end }}
+{{- end }}

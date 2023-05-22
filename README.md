@@ -41,3 +41,4 @@ then swap in:
 - make services idempotent
 - event-driven-architecture with nats
 - request-response paradigm but trap the response somehow...
+- nextjs micro-frontend (ref: https://blog.logrocket.com/build-monorepo-next-js/#benefits-monorepo-next-js)

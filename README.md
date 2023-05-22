@@ -39,5 +39,5 @@ then swap in:
 
 - swap out pgx.conn for a connection pool (support restarts, etc)
 - make services idempotent
-- event-source with nats
-- rethink front-end: SPA with server-side events? (keep templating approach for auth)
+- event-driven-architecture with nats
+- request-response paradigm but trap the response somehow...
